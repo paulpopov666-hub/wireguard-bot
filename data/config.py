@@ -105,3 +105,13 @@ class Config:
         if not peer_dns:
             raise EnvVariableNotFound("PEER_DNS")
         return peer_dns
+
+    @property
+    def channel_id(self) -> str:
+        """ID канала для обязательной подписки (например, '@mychannel' или '-1001234567890')"""
+        return os.getenv("CHANNEL_ID", "")
+
+    @property
+    def channel_invite_link(self) -> str:
+        """Пригласительная ссылка в канал для обязательной подписки"""
+        return os.getenv("CHANNEL_INVITE_LINK", "")

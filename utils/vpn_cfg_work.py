@@ -195,6 +195,10 @@ class WireguardConfig:
     async def disconnect_peer(self, user_id: int):
         """Disconnects peer by user ID."""
         username = database.selector.get_username_by_id(user_id)
+        if not username:
+            logger.error(f"[-] Could not find username for user_id {user_id}")
+            return
+        
         await self.comment_lines_under_username(username)
 
         # Restart wg-quick.

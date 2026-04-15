@@ -2,12 +2,18 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from database.selector import is_user_have_config, all_user_configs
 
 
-async def payed_user_kb():
+async def payed_user_kb(user_id: int = None):
     keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     keyboard.insert(KeyboardButton("📁 Мои конфиги"))
     keyboard.insert(KeyboardButton("🕑 Моя подписка"))
     keyboard.insert(KeyboardButton("📝 Помощь"))
-    keyboard.insert(KeyboardButton("☢️Перезагрузить VPN"))
+    
+    # Добавляем кнопку перезагрузки VPN только если это не админ
+    # Админы имеют отдельную кнопку в меню
+    from data import configuration
+    if user_id not in configuration.admins:
+        keyboard.insert(KeyboardButton("♻️ Обновить статус"))
+    
     return keyboard
 
 
@@ -20,6 +26,12 @@ async def free_user_kb(user_id: int):
     )
     if is_user_have_config(user_id=user_id):
         keyboard.insert(KeyboardButton("📁 Мои конфиги"))
+    
+    # Добавляем кнопку проверки подписки на канал
+    from data import configuration
+    if configuration.channel_id:
+        keyboard.insert(KeyboardButton("✅ Проверить подписку"))
+    
     return keyboard
 
 
@@ -47,5 +59,26 @@ async def subscription_management_kb():
     keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     keyboard.insert(KeyboardButton("📅 Дата отключения"))
     keyboard.insert(KeyboardButton("💵 Продлить"))
+    keyboard.insert(KeyboardButton("🔙 Назад"))
+    return keyboard
+
+
+async def admin_main_kb():
+    """Основное меню администратора"""
+    keyboard = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+    keyboard.insert(KeyboardButton("👥 Статистика пользователей"))
+    keyboard.insert(KeyboardButton("⏰ Статистика по датам"))
+    keyboard.insert(KeyboardButton("➕ Продлить подписку"))
+    keyboard.insert(KeyboardButton("♻️ Перезапустить WireGuard"))
+    keyboard.insert(KeyboardButton("🔙 В главное меню"))
+    return keyboard
+
+
+async def admin_stats_filter_kb():
+    """Клавиатура для фильтрации статистики"""
+    keyboard = ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
+    keyboard.insert(KeyboardButton("Все"))
+    keyboard.insert(KeyboardButton("Активные"))
+    keyboard.insert(KeyboardButton("Истекшие"))
     keyboard.insert(KeyboardButton("🔙 Назад"))
     return keyboard

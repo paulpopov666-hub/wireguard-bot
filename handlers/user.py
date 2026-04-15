@@ -27,6 +27,26 @@ async def cmd_start(message: types.Message) -> types.Message:
             parse_mode=types.ParseMode.HTML,
         )
         return
+    
+    # Проверка подписки на канал (если настроен)
+    if configuration.channel_id:
+        try:
+            member = await bot.get_chat_member(
+                chat_id=configuration.channel_id,
+                user_id=message.from_user.id
+            )
+            if member.status in ["left", "kicked"]:
+                await message.answer(
+                    f"⚠️ Вы вышли из нашего канала!\n\n"
+                    f"Для продолжения использования бота, пожалуйста, вернитесь в канал:\n"
+                    f"https://t.me/+acyqosqzppg2ZTM6\n\n"
+                    f"После возврата снова нажмите /start",
+                    parse_mode=types.ParseMode.HTML,
+                )
+                return
+        except Exception as e:
+            logger.error(f"Ошибка при проверке подписки в /start: {e}")
+    
     if database.selector.is_exist_user(message.from_user.id):
         if database.selector.is_subscription_end(message.from_user.id):
             await message.answer(
@@ -291,6 +311,84 @@ async def cmd_show_subscription(message: types.Message):
         "здесь ты можешь распорядиться своей подпиской",
         reply_markup=await kb.subscription_management_kb(),
     )
+
+
+@rate_limit(limit=5)
+async def cmd_check_channel_subscription(message: types.Message):
+    """Проверка подписки пользователя на канал"""
+    from data import configuration
+    
+    if not configuration.channel_id:
+        await message.answer("❌ Проверка подписки не настроена администратором.")
+        return
+    
+    try:
+        member = await bot.get_chat_member(
+            chat_id=configuration.channel_id,
+            user_id=message.from_user.id
+        )
+        
+        if member.status in ["left", "kicked"]:
+            await message.answer(
+                f"⚠️ Вы не состоите в нашем канале!\\n\\n"
+                f"Для продолжения использования бота, пожалуйста, подпишитесь:\\n"
+                f"{configuration.channel_invite_link}\\n\\n"
+                f"После подписки нажмите кнопку '✅ Проверить подписку' снова.",
+                parse_mode=types.ParseMode.HTML,
+            )
+        else:
+            await message.answer(
+                "✅ Вы подписаны на наш канал! Спасибо!",
+                reply_markup=await kb.free_user_kb(message.from_user.id) 
+                if database.selector.is_subscription_end(message.from_user.id)
+                else await kb.payed_user_kb(message.from_user.id)
+            )
+    except Exception as e:
+        logger.error(f"Ошибка при проверке подписки: {e}")
+        await message.answer("⚠️ Произошла ошибка при проверке подписки. Попробуйте позже.")
+
+
+@rate_limit(limit=30)
+async def cmd_refresh_status(message: types.Message):
+    """Обновление статуса подписки пользователя"""
+    from data import configuration
+    
+    # Проверка подписки на канал (если настроен)
+    if configuration.channel_id:
+        try:
+            member = await bot.get_chat_member(
+                chat_id=configuration.channel_id,
+                user_id=message.from_user.id
+            )
+            if member.status in ["left", "kicked"]:
+                await message.answer(
+                    f"⚠️ Вы вышли из нашего канала!\\n\\n"
+                    f"Для продолжения использования бота, пожалуйста, вернитесь в канал:\\n"
+                    f"{configuration.channel_invite_link}\\n\\n"
+                    f"После возврата снова нажмите /start",
+                    parse_mode=types.ParseMode.HTML,
+                )
+                return
+        except Exception as e:
+            logger.error(f"Ошибка при проверке подписки: {e}")
+    
+    # Обновляем информацию о подписке
+    if database.selector.is_subscription_end(message.from_user.id):
+        await message.answer(
+            f"Привет, {message.from_user.full_name or message.from_user.username}!\\n"
+            f"Твоя подписка закончилась {database.selector.get_subscription_end_date(message.from_user.id)}.\\n"
+            f"Оплати подписку, чтобы продолжить пользоваться VPN.",
+            parse_mode=types.ParseMode.HTML,
+            reply_markup=await kb.free_user_kb(message.from_user.id),
+        )
+    else:
+        await message.answer(
+            f"Привет, {message.from_user.full_name or message.from_user.username}!\\n"
+            f"Твоя подписка действительна до {database.selector.get_subscription_end_date(message.from_user.id)}.\\n"
+            f"Пользуйся VPN с удовольствием!",
+            parse_mode=types.ParseMode.HTML,
+            reply_markup=await kb.payed_user_kb(message.from_user.id),
+        )
 
 
 @rate_limit(limit=3600)

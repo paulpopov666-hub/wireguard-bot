@@ -161,3 +161,106 @@ async def give_subscription_time(
 async def restart_wg_service_admin(message: types.Message, state: FSMContext):
     vpn_config.restart_service()
     await message.answer("Сервис WireGuard перезапущен")
+
+
+# Новые обработчики для кнопок админ-панели
+
+@rate_limit(limit=3)
+@is_admin
+async def cmd_admin_menu(message: types.Message, state: FSMContext):
+    """Показывает главное меню администратора"""
+    await message.answer(
+        "👨‍💼 **Панель администратора**\n\n"
+        "Выберите действие:",
+        parse_mode=types.ParseMode.HTML,
+        reply_markup=await kb.admin_main_kb(),
+    )
+
+
+@rate_limit(limit=5)
+@is_admin
+async def cmd_admin_stats_users(message: types.Message, state: FSMContext):
+    """Показывает общую статистику пользователей"""
+    users = database.selector.get_all_usernames_and_enddate()
+    if not users:
+        await message.answer("❌ База данных пуста")
+        return
+    
+    total_users = len(users)
+    active_users = len([u for u in users if u[1] >= datetime.now()])
+    expired_users = total_users - active_users
+    
+    await message.answer(
+        f"📊 **Статистика пользователей**\n\n"
+        f"👥 Всего пользователей: {total_users}\n"
+        f"✅ Активных: {active_users}\n"
+        f"❌ Истекло: {expired_users}",
+        parse_mode=types.ParseMode.HTML,
+        reply_markup=await kb.admin_stats_filter_kb(),
+    )
+
+
+@rate_limit(limit=5)
+@is_admin
+async def cmd_admin_stats_dates(message: types.Message, state: FSMContext):
+    """Показывает статистику по датам окончания подписки"""
+    await message.answer(
+        "📅 **Статистика по датам**\n\n"
+        "Выберите фильтр:",
+        parse_mode=types.ParseMode.HTML,
+        reply_markup=await kb.admin_stats_filter_kb(),
+    )
+
+
+@rate_limit(limit=5)
+@is_admin
+async def cmd_admin_give_subscription(message: types.Message, state: FSMContext):
+    """Запрос на продление подписки пользователю"""
+    await message.answer(
+        "➕ **Продление подписки**\n\n"
+        "Отправьте команду в формате:\n"
+        "`/give username days`\n"
+        "или\n"
+        "`/give user_id days`\n\n"
+        "Пример: `/give pheezz 30`",
+        parse_mode=types.ParseMode.HTML,
+    )
+
+
+@rate_limit(limit=10)
+@is_admin
+async def cmd_admin_restart_wg(message: types.Message, state: FSMContext):
+    """Перезапуск сервиса WireGuard через кнопку"""
+    await message.answer("♻️ Перезапускаю сервис WireGuard...")
+    vpn_config.restart_service()
+    await message.answer("✅ Сервис WireGuard перезапущен")
+
+
+@rate_limit(limit=5)
+@is_admin
+async def cmd_admin_stats_all(message: types.Message, state: FSMContext):
+    """Показать всех пользователей"""
+    await statistic_endtime(message, state)
+
+
+@rate_limit(limit=5)
+@is_admin
+async def cmd_admin_stats_active(message: types.Message, state: FSMContext):
+    """Показать активных пользователей"""
+    message.text = "/stats active"
+    await statistic_endtime(message, state)
+
+
+@rate_limit(limit=5)
+@is_admin
+async def cmd_admin_stats_expired(message: types.Message, state: FSMContext):
+    """Показать пользователей с истекшей подпиской"""
+    message.text = "/stats expired"
+    await statistic_endtime(message, state)
+
+
+@rate_limit(limit=3)
+@is_admin
+async def cmd_menu_admin(message: types.Message, state: FSMContext):
+    """Возврат в главное меню администратора"""
+    await cmd_admin_menu(message, state)
