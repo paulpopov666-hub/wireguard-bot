@@ -1,5 +1,5 @@
 from aiogram import types
-from aiogram.dispatcher import FSMContext
+from aiogram.fsm.context import FSMContext
 from loader import bot, vpn_config
 from loguru import logger
 
@@ -107,8 +107,6 @@ def filter_users_by_status(users: list, status: str) -> list:
 async def give_subscription_time(
     message: types.Message, state: FSMContext
 ) -> types.Message:
-    # /give pheezz 30
-    # or /give 123456789 30
     if len(message.text.split()) != 3:
         message.answer(
             f"Неверный формат команды\n"

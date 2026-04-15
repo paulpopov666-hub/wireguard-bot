@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  vpnbot:
+    build: .
+    container_name: amnezia_vpn_bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+      - /etc/wireguard:/etc/wireguard
+    ports:
+      - "51820:51820/udp"
+    networks:
+      - vpn_network
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: vpnbot_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-vpnbot}
+      POSTGRES_USER: ${DB_USER:-vpnuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vpnpass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vpn_network
+    ports:
+      - "5432:5432"
+
+networks:
+  vpn_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -19,14 +19,14 @@ class WireguardConfig:
         self.config = self.get_config()
 
     def generate_private_key(self, username: str, save: bool = True) -> str:
-        """Generate wireguard peer PRIVATE key
+        """Generate amneziawg peer PRIVATE key
 
         Returns:
             str: peer private key
         """
         try:
             private_key = (
-                subprocess.check_output("wg genkey", shell=True).decode("utf-8").strip()
+                subprocess.check_output("amneziawg genkey", shell=True).decode("utf-8").strip()
             )
             logger.success("[+] private key generated")
 
@@ -43,7 +43,7 @@ class WireguardConfig:
     def generate_public_key(
         self, private_key: str, username: str, save: bool = True
     ) -> str:
-        """Generate wireguard peer PUBLIC key
+        """Generate amneziawg peer PUBLIC key
 
         Args:
             private_key (str): peer private key,
@@ -54,7 +54,7 @@ class WireguardConfig:
         """
         try:
             public_key = (
-                subprocess.check_output(f"echo '{private_key}' | wg pubkey", shell=True)
+                subprocess.check_output(f"echo '{private_key}' | amneziawg pubkey", shell=True)
                 .decode("utf-8")
                 .strip()
             )
@@ -76,10 +76,10 @@ class WireguardConfig:
         return private_key, public_key
 
     def restart_service(self) -> None:
-        """restart wireguard service"""
+        """restart amneziawg service"""
         try:
             subprocess.run(["sudo", "systemctl", "restart", "wg-quick@wg0.service"])
-            logger.success("[+] wireguard service restarted")
+            logger.success("[+] amneziawg service restarted")
         except Exception as e:
             logger.error(f"[-] {e}")
 
@@ -158,19 +158,36 @@ class WireguardConfig:
         logger.error("[-] Peer address not found")
         return ""
 
-    async def create_peer_config(self, peer_private_key: str) -> str:
-        """creates config for client and returns it as string"""
+    async def create_peer_config(self, peer_private_key: str, peer_address: str = None) -> str:
+        """creates config for client and returns it as string with AmneziaWG obfuscation parameters"""
+        if peer_address is None:
+            peer_address = await self.get_last_peer_adress()
+        
+        # Get obfuscation params from config
+        obf = configuration.obfuscation_params
+        
         cfg = (
             f"[Interface]\n"
             f"PrivateKey = {peer_private_key}\n"
-            f"Address = {await self.get_last_peer_adress()}\n"
+            f"Address = {peer_address}\n"
             f"DNS = {configuration.peer_dns}\n\n"
             f"[Peer]\n"
             f"PublicKey = {self.server_public_key}\n"
             f"PresharedKey = {self.server_preshared_key}\n"
             f"AllowedIPs = 0.0.0.0/0\n"
             f"Endpoint = {self.server_ip}:{self.server_port}\n"
-            f"PersistentKeepalive = 20"
+            f"PersistentKeepalive = 20\n"
+            f"\n"
+            f"# AmneziaWG obfuscation settings\n"
+            f"Jc = {obf['jc']}\n"
+            f"Jmin = {obf['jmin']}\n"
+            f"Jmax = {obf['jmax']}\n"
+            f"S1 = {obf['s1']}\n"
+            f"S2 = {obf['s2']}\n"
+            f"H1 = {obf['h1']}\n"
+            f"H2 = {obf['h2']}\n"
+            f"H3 = {obf['h3']}\n"
+            f"H4 = {obf['h4']}\n"
         )
         return cfg
 

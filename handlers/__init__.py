@@ -1,5 +1,6 @@
 from .user import *
 from .admin import *
+from .admin_extended import *
 from aiogram.types import ContentType
 
 # DON'T TOUCH THIS IMPORT
@@ -78,6 +79,13 @@ def setup(dp: Dispatcher):
         lambda call: call.data == "cancel_payment",
         state=NewPayment.payment_image,
     )
+    
+    # Handler for "I joined the group" button
+    dp.register_message_handler(
+        handle_joined_group,
+        text="✅ Я вступил в группу",
+        state=None,
+    )
 
     """moder handlers"""
     dp.register_message_handler(cmd_info, commands=["info"], state=None)
@@ -89,3 +97,23 @@ def setup(dp: Dispatcher):
     dp.register_message_handler(
         restart_wg_service_admin, commands=["wgrestart"], state=None
     )
+
+    """extended admin handlers"""
+    # Obfuscation management
+    dp.register_message_handler(cmd_set_obfuscation, commands=['set_obfuscation'])
+    dp.register_callback_query_handler(select_obfuscation_param, text_startswith='obf_')
+    
+    # Statistics
+    dp.register_message_handler(cmd_stats, commands=['stats'])
+    
+    # Broadcast
+    dp.register_message_handler(cmd_broadcast, commands=['broadcast'])
+    dp.register_callback_query_handler(select_broadcast_audience, text_startswith='broadcast_')
+    dp.register_message_handler(send_broadcast, state=AdminBroadcast.message)
+    
+    # Support tickets
+    dp.register_message_handler(handle_support_request, commands=['support'])
+    dp.register_message_handler(cmd_support_tickets, commands=['tickets'])
+    
+    # Maintenance mode
+    dp.register_message_handler(cmd_maintenance_mode, commands=['maintenance'])

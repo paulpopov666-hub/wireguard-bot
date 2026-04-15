@@ -1,330 +1,251 @@
-#color codes for terminal
-Red=$'\e[1;31m'
-Green=$'\e[1;32m'
-Blue=$'\e[1;34m'
-Defaul_color=$'\e[0m'
-Orange=$'\e[1;33m'
-White=$'\e[1;37m'
+#!/bin/bash
 
-# disable firewall
-sudo ufw disable
+# Amnezia WireGuard VPN Bot - Semi-Automatic Installation Script
+# This script installs and configures the VPN bot with Amnezia WireGuard
 
-sudo apt install -y curl iptables
-#clear screen after install curl
-clear
+set -e
 
-#get server external ip
-server_ip=$(curl -s https://ifconfig.me)
-
-if [ -z "$server_ip" ]
-then
-      echo "$Red Can't get server external ip" | sed 's/\$//g'
-      echo "$Red Check your internet connection" | sed 's/\$//g'
-      echo "$Red Fail on command: curl -s https://ifconfig.me" | sed 's/\$//g'
-      exit 1
-fi
-
-echo $Blue | sed 's/\$//g'
-echo "This script will install WireGuard VPN Bot on your server"
-echo "It will install and configure:"
-echo $Orange | sed 's/\$//g'
-echo "- WireGuard VPN"
-echo "- AdGuard Home"
-echo "- PostgreSQL"
-echo "- Python 3.10"
-echo "- Poetry"
-echo "- Telegram Bot"
-echo $Red | sed 's/\$//g'
-echo "............................................................"
-echo "...................made by PheeZz..........................."
-echo "............................................................"
-
-echo $White | sed 's/\$//g'
-
-echo "Now need to input some data for bot configuration"
-echo "You can change it later in ~/wireguard-bot/data/.env file"
+echo "=========================================="
+echo "  Amnezia WireGuard VPN Bot Installer"
+echo "=========================================="
 echo ""
 
-#ask for bot token
-echo "Enter bot token:"
-echo "You can get it from $Blue @BotFather"
-read bot_token
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
 
-#ask user for payment card
-echo "$White" | sed 's/\$//g'
-echo "Enter payment card number:"
-echo "Just press ENTER for use default card [$Blue 4242424242424242 $White]" | sed 's/\$//g'
-read payment_card
-if [ -z "$payment_card" ]
-then
-      payment_card="4242424242424242"
-fi
+# Function to print colored messages
+print_success() {
+    echo -e "${GREEN}✓ $1${NC}"
+}
 
-#ask user for admins ids
-echo ""
-echo "Enter admins ids (separated by comma):"
-echo "Just press ENTER for use default ids [$Blue 123456789, $White]" | sed 's/\$//g'
-echo "You can get your id by sending /id command to @userinfobot"
-read admins_ids
-if [ -z "$admins_ids" ]
-then
-      admins_ids="123456789,"
-fi
+print_error() {
+    echo -e "${RED}✗ $1${NC}"
+}
 
-#ask user for Database name
-echo ""
-echo "Enter Database name:"
-echo "Just press ENTER for use default name [$Blue wireguardbot $White]" | sed 's/\$//g'
-read database_name
-if [ -z "$database_name" ]
-then
-      database_name="wireguardbot"
-fi
+print_info() {
+    echo -e "${YELLOW}→ $1${NC}"
+}
 
-#ask user for Database user
-echo ""
-echo "Enter Database user:"
-echo "Just press ENTER for use default user [$Blue wireguard_manager_user $White]" | sed 's/\$//g'
-read database_user
-if [ -z "$database_user" ]
-then
-      database_user="wireguard_manager_user"
-fi
-
-echo ""
-echo "Enter Database user password:"
-echo "Just press ENTER for use default password [$Blue bestpassword123 $White]" | sed 's/\$//g'
-read database_passwd
-if [ -z "$database_passwd" ]
-then
-      database_passwd="bestpassword123"
-fi
-
-echo ""
-echo "Enter config name prefix:"
-echo "Just press ENTER for use default prefix [$Blue WG_VPN_BOT_BY_PHEEZZ $White]" | sed 's/\$//g'
-read config_prefix
-
-if [ -z "$config_prefix" ]
-then
-      config_prefix="WG_VPN_BOT_BY_PHEEZZ"
-fi
-
-echo ""
-echo "Enter base subscription monthly price in rubles:"
-echo "Just press ENTER for use default price [$Blue 100 $White]" | sed 's/\$//g'
-read base_subscription_monthly_price_rubles
-
-if [ -z "$base_subscription_monthly_price_rubles" ]
-then
-      base_subscription_monthly_price_rubles="100"
-fi
-
-echo ""
-echo "Do u want to use domain name instead of ip? [$Blue enter domain name$White or press ENTER to skip ]" | sed 's/\$//g'
-read domain_name
-
-#if domain name not empty then switch variable server ip with it
-if [ -n "$domain_name" ]
-then
-      server_ip=$domain_name
-fi
-
-echo ""
-echo "Do you want to install AdGuard Home? [ y / $Blue [n] $White]" | sed 's/\$//g'
-read install_adguard_home
-
-if [ "$install_adguard_home" = "y" ]
-then
-      install_adguard_home="true"
-else
-      install_adguard_home="false"
-fi
-
-#if install_adguard_home is false ask for peer dns server
-if [ "$install_adguard_home" = "false" ]
-then
-      echo ""
-      echo "Enter peer dns server(-s):"
-      echo "Just press ENTER for use default dns server [$Blue 1.1.1.1, 8.8.8.8 $White]" | sed 's/\$//g'
-
-      read peer_dns
-      #if peer dns is empty then set default dns server
-      if [ -z "$peer_dns" ]
-        then
-            peer_dns="1.1.1.1, 8.8.8.8"
-      fi
-else
-      #if install_adguard_home is true then set peer dns to "10.0.0.1"
-      peer_dns="10.0.0.1"
-
-fi
-echo "$White peer dns: $Blue $peer_dns" | sed 's/\$//g'
-sleep 5
-
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y git bat
-git clone https://github.com/PheeZz/wireguard-bot.git
-
-#install zsh, curl
-sudo apt install -y curl
-
-#install python3.10
-sudo apt install -y software-properties-common
-sudo add-apt-repository -y ppa:deadsnakes/ppa
-sudo apt install -y python3.10 python3.10-venv python3.10-dev
-curl -sS https://bootstrap.pypa.io/get-pip.py | python3.10
-
-#install tmux, mosh, wireguard, and postgres
-sudo apt install -y tmux mosh wireguard postgresql postgresql-contrib
-sudo systemctl start postgresql.service
-
-#create wg keys
-sudo wg genkey | sudo tee /etc/wireguard/privatekey | sudo wg pubkey | sudo tee /etc/wireguard/publickey
-sudo wg genpsk | sudo tee /etc/wireguard/presharedkey
-sudo chmod 600 /etc/wireguard/privatekey
-sudo chmod 600 /etc/wireguard/presharedkey
-
-
-# Determine the correct network interface
-if ip link show eth0 &> /dev/null; then
-    interface=eth0
-elif ip link show ens3 &> /dev/null; then
-    interface=ens3
-elif ip link show enp0s5 &> /dev/null; then
-    interface=enp0s5
-else
-    echo "Error: could not determine network interface" >&2
+# Check if running as root
+if [ "$EUID" -ne 0 ]; then 
+    print_error "Please run as root (use sudo)"
     exit 1
 fi
 
-# Create WireGuard configuration file
-sudo cat << EOF > /etc/wireguard/wg0.conf
-[Interface]
-PrivateKey = $(cat /etc/wireguard/privatekey)
-Address = 10.0.0.1/24
-ListenPort = 51830
-PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $interface -j MASQUERADE
-PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $interface -j MASQUERADE
+print_info "Updating system packages..."
+apt-get update -qq
 
+print_info "Installing dependencies..."
+apt-get install -y -qq \
+    python3 \
+    python3-pip \
+    python3-venv \
+    git \
+    curl \
+    wget \
+    jq \
+    postgresql \
+    postgresql-contrib \
+    systemd \
+    >> /dev/null 2>&1
 
+print_success "System dependencies installed"
+
+# Install Amnezia WireGuard tools
+print_info "Installing Amnezia WireGuard tools..."
+if ! command -v amneziawg &> /dev/null; then
+    apt-get install -y -qq software-properties-common apt-transport-https >> /dev/null 2>&1
+    
+    # Download and install amneziawg-tools from GitHub releases
+    TEMP_DIR=$(mktemp -d)
+    cd "$TEMP_DIR"
+    
+    # Get latest release version
+    LATEST_VERSION=$(curl -s https://api.github.com/repos/amnezia-vpn/amneziawg-tools/releases/latest | jq -r .tag_name | sed 's/v//')
+    
+    # Download deb package
+    wget -q "https://github.com/amnezia-vpn/amneziawg-tools/releases/download/v${LATEST_VERSION}/amneziawg-tools_${LATEST_VERSION}_amd64.deb"
+    
+    # Install
+    dpkg -i "amneziawg-tools_${LATEST_VERSION}_amd64.deb" >> /dev/null 2>&1
+    
+    cd - > /dev/null
+    rm -rf "$TEMP_DIR"
+    
+    print_success "Amnezia WireGuard tools installed (version ${LATEST_VERSION})"
+else
+    print_success "Amnezia WireGuard tools already installed"
+fi
+
+# Setup PostgreSQL
+print_info "Configuring PostgreSQL..."
+systemctl enable postgresql >> /dev/null 2>&1
+systemctl start postgresql >> /dev/null 2>&1
+
+# Create database and user
+sudo -u postgres psql -c "CREATE DATABASE vpnbot;" >> /dev/null 2>&1 || true
+sudo -u postgres psql -c "CREATE USER vpnuser WITH PASSWORD 'vpnpassword123';" >> /dev/null 2>&1 || true
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE vpnbot TO vpnuser;" >> /dev/null 2>&1
+
+print_success "PostgreSQL configured"
+
+# Create bot directory
+BOT_DIR="/opt/vpnbot"
+print_info "Creating bot directory at $BOT_DIR..."
+mkdir -p "$BOT_DIR"
+cd "$BOT_DIR"
+
+# Clone or update repository
+if [ -d ".git" ]; then
+    print_info "Updating existing installation..."
+    git pull --quiet
+else
+    print_info "Cloning repository..."
+    git clone https://github.com/PheeZz/wireguard-bot.git . --quiet
+fi
+
+print_success "Bot code ready"
+
+# Create virtual environment
+print_info "Setting up Python virtual environment..."
+python3 -m venv venv
+source venv/bin/activate
+
+# Install Python dependencies
+print_info "Installing Python dependencies..."
+pip install --upgrade pip --quiet
+pip install -r requirements.txt --quiet
+
+print_success "Python dependencies installed"
+
+# Generate .env file
+print_info "Generating configuration file..."
+cat > .env << EOF
+# Bot Configuration
+BOT_TOKEN=YOUR_BOT_TOKEN_HERE
+ADMINS=YOUR_TELEGRAM_ID_HERE
+
+# Payment Configuration
+# Choose payment method: 'manual' (screenshots) or 'cryptobot'
+PAYMENT_METHOD=manual
+PAYMENT_CARD=2200000000000000
+CRYPTOBOT_TOKEN=
+
+# Pricing
+BASE_SUBSCRIPTION_MONTHLY_PRICE_RUBLES=299
+
+# Database Configuration
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=vpnuser
+DB_USER_PASSWORD=vpnpassword123
+DATABASE=vpnbot
+
+# WireGuard Configuration
+CONFIGS_PREFIX=wg_config
+PEER_DNS=8.8.8.8
+
+# Required Telegram Group ID (optional, for membership check)
+REQUIRED_GROUP_ID=
+
+# AmneziaWG Obfuscation Parameters
+OBFUSCATION_JC=10
+OBFUSCATION_JMIN=5
+OBFUSCATION_JMAX=20
+OBFUSCATION_S1=30
+OBFUSCATION_S2=40
+OBFUSCATION_H1=1
+OBFUSCATION_H2=2
+OBFUSCATION_H3=3
+OBFUSCATION_H4=4
 EOF
 
-# Enable IP forwarding
-sudo echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-sudo sysctl -p 
+print_success "Configuration file created at $BOT_DIR/.env"
 
-#enable and start wiregiard service
-sudo systemctl enable wg-quick@wg0.service
-sudo systemctl start wg-quick@wg0.service
+# Run database migration
+print_info "Running database migration..."
+python database/migrate_v2.py
 
-#configure postgres
-su - postgres -c "psql -c \"CREATE DATABASE $database_name;\""
-#create user
-su - postgres -c "psql -c \"CREATE USER $database_user WITH PASSWORD '$database_passwd';\""
-#grant privileges
-su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON DATABASE $database_name TO $database_user;\""
-#grant privileges to wireguard_manager_user on shema public
-su - postgres -c "psql -c \"GRANT ALL PRIVILEGES ON SCHEMA public TO $database_user;\""
+print_success "Database migration completed"
 
-#get server public and preshared keys
-server_public_key=$(sudo cat /etc/wireguard/publickey)
-server_preshared_key=$(sudo cat /etc/wireguard/presharedkey)
-
-#configure .env file
-cd ~/wireguard-bot
-#write .env file
-cat << EOF >> data/.env
-WG_BOT_TOKEN = $bot_token
-WG_SERVER_IP = $server_ip
-WG_SERVER_PORT = '51830'
-WG_SERVER_PUBLIC_KEY = $server_public_key
-WG_SERVER_PRESHARED_KEY= $server_preshared_key
-WG_CFG_PATH = '/etc/wireguard/wg0.conf'
-ADMINS_IDS = $admins_ids
-PAYMENT_CARD = $payment_card
-CONFIGS_PREFIX = $config_prefix
-BASE_SUBSCRIPTION_MONTHLY_PRICE_RUBLES = $base_subscription_monthly_price_rubles
-PEER_DNS = '$peer_dns'
-
-
-DATABASE = $database_name
-DB_USER = $database_user
-DB_USER_PASSWORD = $database_passwd
-DB_HOST = 'localhost'
-DB_PORT = '5432'
-
-EOF
-
-#install poetry and install dependencies
-sudo pip3.10 install poetry
-#install dependencies
-poetry install
-
-#try to run create.py if it fails, then give db user superuser privileges
-mv database/create.py .
-$(poetry env info --path)/bin/python3.10 create.py || sudo -u postgres psql -c "ALTER USER $database_user WITH SUPERUSER;" && $(poetry env info --path)/bin/python3.10 create.py
-rm create.py
-
-#create .service file
-sudo cat << EOF >> /etc/systemd/system/wireguard-bot.service
+# Create systemd service
+print_info "Creating systemd service..."
+cat > /etc/systemd/system/vpnbot.service << EOF
 [Unit]
-Description=WireGuard VPN Bot
-After=network.target
+Description=Amnezia WireGuard VPN Bot
+After=network.target postgresql.service
 
 [Service]
 Type=simple
 User=root
-ExecStart=/bin/bash -c 'cd ~/wireguard-bot/ && $(poetry env info --path)/bin/python3.10 app.py'
+WorkingDirectory=$BOT_DIR
+Environment="PATH=$BOT_DIR/venv/bin"
+ExecStart=$BOT_DIR/venv/bin/python app.py
+Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-#enable and start wireguard-bot.service
 systemctl daemon-reload
-systemctl enable wireguard-bot.service
-systemctl start wireguard-bot.service
+systemctl enable vpnbot >> /dev/null 2>&1
 
+print_success "Systemd service created"
 
-if [ "$install_adguard_home" = "true" ]
-then
-    # Install AdGuard Home and configure it to use WireGuard as upstream DNS server
-    curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
-    cd /opt/AdGuardHome/
-    sudo ./AdGuardHome -s install
-    sudo ./AdGuardHome -s start
-    sudo ./AdGuardHome -s status
-    sudo ./AdGuardHome -s stop
-    sudo mkdir -p /etc/systemd/resolved.conf.d
-    sudo cat << EOF >> /etc/systemd/resolved.conf.d/adguardhome.conf
-[Resolve]
-DNS=127.0.0.1
-DNSStubListener=no
-EOF
-    sudo mv /etc/resolv.conf /etc/resolv.conf.backup
-    sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
-    sudo systemctl daemon-reload
-    sudo systemctl reload-or-restart systemd-resolved
-    sudo systemctl restart systemd-resolved
-    sudo ./AdGuardHome -s start
-    #show message about configuring AdGuard Home
-    for i in {1..5}; do echo "$Blue HEY USER, configure $Green ADGUARD HOME at url $Red http://$server_ip:3000" | sed 's/\$//g'; done
-    #show message about get torrrents blocklist
-    for i in {1..2}; do echo "$Orange TORRENTS BLOCKLIST at url $Red https://raw.githubusercontent.com/DNCD/block-bittorrent-domains/main/trackers" | sed 's/\$//g'; done
-
+# Configure firewall
+print_info "Configuring firewall..."
+if command -v ufw &> /dev/null; then
+    ufw allow 51820/udp >> /dev/null 2>&1 || true
+    print_success "Firewall configured (UDP port 51820 allowed)"
+else
+    print_info "UFW not installed, skipping firewall configuration"
 fi
 
-echo "$Green Installation completed successfully" | sed 's/\$//g'
-echo "$Defaul_color" | sed 's/\$//g'
+# Enable IP forwarding
+print_info "Enabling IP forwarding..."
+echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
+sysctl -p >> /dev/null 2>&1
 
-echo "$Blue Your .env file located at $Orange ~/wireguard-bot/data/.env" | sed 's/\$//g'
-echo "$Blue Do u want to watch it? [ y / $Blue [n] $White]" | sed 's/\$//g'
-read watch_env_file
+print_success "IP forwarding enabled"
 
-if [ "$watch_env_file" = "y" ]
-then
-    batcat ~/wireguard-bot/data/.env
+# Final instructions
+echo ""
+echo "=========================================="
+echo -e "${GREEN}Installation completed successfully!${NC}"
+echo "=========================================="
+echo ""
+echo "IMPORTANT: Before starting the bot, you must:"
+echo ""
+echo "1. Edit the configuration file:"
+echo "   nano $BOT_DIR/.env"
+echo ""
+echo "   Replace these values:"
+echo "   - BOT_TOKEN: Get from @BotFather in Telegram"
+echo "   - ADMINS: Your Telegram user ID (get from @userinfobot)"
+echo "   - REQUIRED_GROUP_ID: Your Telegram group ID (optional)"
+echo "   - CRYPTOBOT_TOKEN: If using CryptoBot payments (optional)"
+echo ""
+echo "2. Start the bot:"
+echo "   systemctl start vpnbot"
+echo ""
+echo "3. Check bot status:"
+echo "   systemctl status vpnbot"
+echo ""
+echo "4. View logs:"
+echo "   journalctl -u vpnbot -f"
+echo ""
+echo "=========================================="
+echo ""
+
+# Ask to start the bot
+read -p "Do you want to start the bot now? (y/n): " -n 1 -r
+echo ""
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    systemctl start vpnbot
+    print_success "Bot started!"
+    print_info "Check status with: systemctl status vpnbot"
 fi
-
-echo "$Defaul_color" | sed 's/\$//g'
