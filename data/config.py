@@ -25,9 +25,9 @@ class Config:
         self._peer_dns = self._get_peer_dns()
         self._required_group_id = self._get_required_group_id()
         self._trial_days = 1  # Trial period in days
-        self._cryptobot_token = self._get_cryptobot_token()
-        self._payment_method = self._get_payment_method()  # 'manual' or 'cryptobot'
+        self._payment_method = "manual"  # Only manual payment (screenshots)
         self._obfuscation_params = self._get_obfuscation_params()
+        self._amnezia_settings = self._get_amnezia_settings()
 
     @property
     def bot_token(self) -> str:
@@ -66,16 +66,16 @@ class Config:
         return self._trial_days
 
     @property
-    def cryptobot_token(self) -> str | None:
-        return self._cryptobot_token
-
-    @property
     def payment_method(self) -> str:
-        return self._payment_method
+        return "manual"  # Always manual payment
 
     @property
     def obfuscation_params(self) -> dict:
         return self._obfuscation_params
+
+    @property
+    def amnezia_settings(self) -> dict:
+        return self._amnezia_settings
 
     def _get_bot_token(self) -> str:
         bot_token = os.getenv("BOT_TOKEN")
@@ -91,7 +91,6 @@ class Config:
 
     def _get_payment_card(self) -> str:
         payment_card = os.getenv("PAYMENT_CARD", "")
-        # Return empty string if not set (optional for cryptobot mode)
         return payment_card
 
     def _get_configs_prefix(self) -> str:
@@ -130,33 +129,35 @@ class Config:
             logger.error(f"Invalid REQUIRED_GROUP_ID value: {group_id}")
             return None
 
-    def _get_cryptobot_token(self) -> str | None:
-        """Get CryptoBot API token"""
-        token = os.getenv("CRYPTOBOT_TOKEN")
-        if not token:
-            logger.warning("CRYPTOBOT_TOKEN not found in .env file, CryptoBot payments disabled")
-            return None
-        return token
-
-    def _get_payment_method(self) -> str:
-        """Get payment method: 'manual' (screenshots) or 'cryptobot'"""
-        method = os.getenv("PAYMENT_METHOD", "manual").lower()
-        if method not in ["manual", "cryptobot"]:
-            logger.warning(f"Invalid PAYMENT_METHOD '{method}', defaulting to 'manual'")
-            return "manual"
-        return method
-
     def _get_obfuscation_params(self) -> dict:
-        """Get AmneziaWG obfuscation parameters"""
+        """Get AmneziaWG obfuscation parameters (AmneziaWG 2.0 format)"""
         params = {
-            "jc": int(os.getenv("OBFUSCATION_JC", "10")),
-            "jmin": int(os.getenv("OBFUSCATION_JMIN", "5")),
-            "jmax": int(os.getenv("OBFUSCATION_JMAX", "20")),
-            "s1": int(os.getenv("OBFUSCATION_S1", "30")),
-            "s2": int(os.getenv("OBFUSCATION_S2", "40")),
-            "h1": int(os.getenv("OBFUSCATION_H1", "1")),
-            "h2": int(os.getenv("OBFUSCATION_H2", "2")),
-            "h3": int(os.getenv("OBFUSCATION_H3", "3")),
-            "h4": int(os.getenv("OBFUSCATION_H4", "4")),
+            "h1": os.getenv("OBFUSCATION_H1", "646561924-646573803"),
+            "h2": os.getenv("OBFUSCATION_H2", "1946678917-1946711958"),
+            "h3": os.getenv("OBFUSCATION_H3", "2485102049-2485121055"),
+            "h4": os.getenv("OBFUSCATION_H4", "3974564915-3974609527"),
+            "s1": int(os.getenv("OBFUSCATION_S1", "14")),
+            "s2": int(os.getenv("OBFUSCATION_S2", "117")),
+            "s3": int(os.getenv("OBFUSCATION_S3", "64")),
+            "s4": int(os.getenv("OBFUSCATION_S4", "11")),
+            "jc": int(os.getenv("OBFUSCATION_JC", "5")),
+            "jmin": int(os.getenv("OBFUSCATION_JMIN", "320")),
+            "jmax": int(os.getenv("OBFUSCATION_JMAX", "795")),
+            "i1": os.getenv("OBFUSCATION_I1", "<b 0xc3000000011367b46e67578c05c2fcb734cf9bed45ff4c8cce0288f60082699e76><rc 14><t><r 1000><r 201>"),
+            "i2": os.getenv("OBFUSCATION_I2", "<b 0xc20000000108fc7b0c89c6d2ee58096efa819b42b372c2de11be120f5c964f4950418e00c805ca82431faca9ea68><rc 14><t><r 1000><r 186>"),
+            "i3": os.getenv("OBFUSCATION_I3", "<b 0xc3000000010c885286dd36f1b50b27518dd50d493fb82f818aa6c5d96db7da130058089bb3><rc 19><t><r 1000><r 191>"),
+            "i4": os.getenv("OBFUSCATION_I4", "<b 0xc2000000010cd62091ab627f57efb52082fd04050efc050023b74572><rc 18><t><r 1000><r 201>"),
+            "i5": os.getenv("OBFUSCATION_I5", "<b 0xc0000000010bc01af1c16c14a0a6262c2801f316af2ab4f371efc0af7faac73f4799d01bbf89ec4ff3fd92d46e45><rc 13><t><r 1000><r 189>"),
         }
         return params
+
+    def _get_amnezia_settings(self) -> dict:
+        """Get Amnezia WireGuard server settings for SSH connection"""
+        settings = {
+            "host": os.getenv("AMNEZIA_HOST", "127.0.0.1"),
+            "port": int(os.getenv("AMNEZIA_PORT", "22")),
+            "user": os.getenv("AMNEZIA_USER", "root"),
+            "password": os.getenv("AMNEZIA_PASSWORD", ""),
+            "service_name": os.getenv("AMNEZIA_SERVICE_NAME", "wireguard"),
+        }
+        return settings

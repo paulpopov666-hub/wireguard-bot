@@ -120,16 +120,41 @@ echo "   🔑 Ключи WireGuard сгенерированы"
 DB_PASS_GEN=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 20)
 echo "   🔒 Пароль БД сгенерирован"
 
-# Запрос минимальных данных у пользователя
+# Запрос данных у пользователя
 BOT_TOKEN=""
 ADMIN_ID=""
 GROUP_LINK=""
 PRICE="199"
 CARD=""
 
+# Данные для подключения к серверу Amnezia (автоматически для локальной установки)
+echo ""
+echo -e "${YELLOW}=== НАСТРОЙКА AMNEZIA WIREGUARD ===${NC}"
+echo -e "${GREEN}Поскольку бот и VPN устанавливаются на один сервер, настройка сети будет выполнена автоматически.${NC}"
+
+# Используем локальный сервер автоматически
+AMNEZIA_HOST="127.0.0.1"
+AMNEZIA_PORT="22"
+AMNEZIA_USER="root"
+
+# Для локального подключения пароль не требуется при использовании SSH ключей или localhost без проверки,
+# но для унификации конфигурации бота запишем пустое значение или заглушку, 
+# так как бот может использовать прямое обращение к конфигам, а не SSH.
+# Если бот все же требует поле password, оставим его пустым или поставим заглушку.
+AMNEZIA_PASSWORD="" 
+
+AMNEZIA_SERVICE_NAME="wireguard"
+
+echo -e "   🌍 Хост: ${AMNEZIA_HOST} (локально)"
+echo -e "   🔌 Порт SSH: ${AMNEZIA_PORT}"
+echo -e "   👤 Пользователь: ${AMNEZIA_USER}"
+echo -e "   📦 Сервис: ${AMNEZIA_SERVICE_NAME}"
+
+echo ""
+echo -e "${YELLOW}=== НАСТРОЙКА TELEGRAM БОТА ===${NC}"
 read -p "Введите токен бота (@BotFather): " BOT_TOKEN
 read -p "Введите ваш Telegram ID (администратор): " ADMIN_ID
-read -p "Введите ссылку на обязательную группу (например, https://t.me/mychannel): " GROUP_LINK
+read -p "Введите ссылку на обязательную группу (например, https://t.me/mychannel, можно пропустить): " GROUP_LINK
 read -p "Цена подписки в месяц (руб, по умолчанию 199): " PRICE_INPUT
 if [ -n "$PRICE_INPUT" ]; then
     PRICE=$PRICE_INPUT
@@ -144,6 +169,13 @@ cat > .env <<EOF
 # TELEGRAM SETTINGS
 BOT_TOKEN=$BOT_TOKEN
 ADMINS=$ADMIN_ID
+
+# AMNEZIA WIREGUARD SETTINGS
+AMNEZIA_HOST=$AMNEZIA_HOST
+AMNEZIA_PORT=$AMNEZIA_PORT
+AMNEZIA_USER=$AMNEZIA_USER
+AMNEZIA_PASSWORD=$AMNEZIA_PASSWORD
+AMNEZIA_SERVICE_NAME=$AMNEZIA_SERVICE_NAME
 
 # VPN SETTINGS (Amnezia WireGuard)
 WG_SERVER_IP=$SERVER_IP
