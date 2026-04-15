@@ -29,7 +29,6 @@ echo "This script will install WireGuard VPN Bot on your server"
 echo "It will install and configure:"
 echo $Orange | sed 's/\$//g'
 echo "- WireGuard VPN"
-echo "- AdGuard Home"
 echo "- PostgreSQL"
 echo "- Python 3.10"
 echo "- Poetry"
@@ -130,34 +129,16 @@ then
       server_ip=$domain_name
 fi
 
+#ask user for peer dns server
 echo ""
-echo "Do you want to install AdGuard Home? [ y / $Blue [n] $White]" | sed 's/\$//g'
-read install_adguard_home
+echo "Enter peer dns server(-s):"
+echo "Just press ENTER for use default dns server [$Blue 1.1.1.1, 8.8.8.8 $White]" | sed 's/\$//g'
 
-if [ "$install_adguard_home" = "y" ]
-then
-      install_adguard_home="true"
-else
-      install_adguard_home="false"
-fi
-
-#if install_adguard_home is false ask for peer dns server
-if [ "$install_adguard_home" = "false" ]
-then
-      echo ""
-      echo "Enter peer dns server(-s):"
-      echo "Just press ENTER for use default dns server [$Blue 1.1.1.1, 8.8.8.8 $White]" | sed 's/\$//g'
-
-      read peer_dns
-      #if peer dns is empty then set default dns server
-      if [ -z "$peer_dns" ]
-        then
-            peer_dns="1.1.1.1, 8.8.8.8"
-      fi
-else
-      #if install_adguard_home is true then set peer dns to "10.0.0.1"
-      peer_dns="10.0.0.1"
-
+read peer_dns
+#if peer dns is empty then set default dns server
+if [ -z "$peer_dns" ]
+  then
+      peer_dns="1.1.1.1, 8.8.8.8"
 fi
 echo "$White peer dns: $Blue $peer_dns" | sed 's/\$//g'
 sleep 5
@@ -256,6 +237,15 @@ DB_PORT = '5432'
 
 EOF
 
+# Add channel subscription variables if enabled
+if [ "$use_channel" = "y" ] || [ "$use_channel" = "Y" ]
+then
+      cat << EOF >> data/.env
+CHANNEL_ID = $channel_id
+CHANNEL_INVITE_LINK = $channel_invite_link
+EOF
+fi
+
 #install poetry and install dependencies
 sudo pip3.10 install poetry
 #install dependencies
@@ -285,35 +275,6 @@ EOF
 systemctl daemon-reload
 systemctl enable wireguard-bot.service
 systemctl start wireguard-bot.service
-
-
-if [ "$install_adguard_home" = "true" ]
-then
-    # Install AdGuard Home and configure it to use WireGuard as upstream DNS server
-    curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v
-    cd /opt/AdGuardHome/
-    sudo ./AdGuardHome -s install
-    sudo ./AdGuardHome -s start
-    sudo ./AdGuardHome -s status
-    sudo ./AdGuardHome -s stop
-    sudo mkdir -p /etc/systemd/resolved.conf.d
-    sudo cat << EOF >> /etc/systemd/resolved.conf.d/adguardhome.conf
-[Resolve]
-DNS=127.0.0.1
-DNSStubListener=no
-EOF
-    sudo mv /etc/resolv.conf /etc/resolv.conf.backup
-    sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
-    sudo systemctl daemon-reload
-    sudo systemctl reload-or-restart systemd-resolved
-    sudo systemctl restart systemd-resolved
-    sudo ./AdGuardHome -s start
-    #show message about configuring AdGuard Home
-    for i in {1..5}; do echo "$Blue HEY USER, configure $Green ADGUARD HOME at url $Red http://$server_ip:3000" | sed 's/\$//g'; done
-    #show message about get torrrents blocklist
-    for i in {1..2}; do echo "$Orange TORRENTS BLOCKLIST at url $Red https://raw.githubusercontent.com/DNCD/block-bittorrent-domains/main/trackers" | sed 's/\$//g'; done
-
-fi
 
 echo "$Green Installation completed successfully" | sed 's/\$//g'
 echo "$Defaul_color" | sed 's/\$//g'

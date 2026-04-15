@@ -39,7 +39,7 @@ async def cmd_start(message: types.Message) -> types.Message:
                 await message.answer(
                     f"⚠️ Вы вышли из нашего канала!\n\n"
                     f"Для продолжения использования бота, пожалуйста, вернитесь в канал:\n"
-                    f"https://t.me/+acyqosqzppg2ZTM6\n\n"
+                    f"{configuration.channel_invite_link}\n\n"
                     f"После возврата снова нажмите /start",
                     parse_mode=types.ParseMode.HTML,
                 )
@@ -60,6 +60,41 @@ async def cmd_start(message: types.Message) -> types.Message:
             )
         return
 
+    # Новый пользователь - проверяем, был ли использован триал
+    trial_used = database.selector.is_trial_used(message.from_user.id)
+    
+    if not trial_used and configuration.channel_id:
+        # Проверяем, состоит ли пользователь в канале
+        try:
+            member = await bot.get_chat_member(
+                chat_id=configuration.channel_id,
+                user_id=message.from_user.id
+            )
+            if member.status not in ["left", "kicked"]:
+                # Пользователь в канале и не использовал триал - даем 3 дня
+                await message.reply(
+                    f"Привет, {message.from_user.full_name or message.from_user.username}!\n"
+                    f"🎉 Ты получил 3 дня бесплатного триального периода!\n\n"
+                    f"Чтобы начать пользоваться VPN, нажми кнопку '🆕 Создать конфиг'",
+                    reply_markup=await kb.payed_user_kb(),
+                )
+                # Вставляем пользователя с триальным периодом 3 дня
+                database.insert_new_user(message, trial_days=3)
+                
+                # notify admin about new user with trial
+                for admin in configuration.admins:
+                    await bot.send_message(
+                        admin,
+                        f"🎁 Новый пользователь с триалом: {hcode(message.from_user.full_name)}\n"
+                        f"id: {hcode(message.from_user.id)}, username: {hcode(message.from_user.username)}\n"
+                        f"Триальный период: 3 дня",
+                        parse_mode=types.ParseMode.HTML,
+                    )
+                return
+        except Exception as e:
+            logger.error(f"Ошибка при проверке триала: {e}")
+    
+    # Если триал уже использован или канал не настроен
     await message.reply(
         f"Привет, {message.from_user.full_name or message.from_user.username}!\nЧтобы начать пользоваться VPN, оплати подписку",
         reply_markup=await kb.free_user_kb(message.from_user.id),
@@ -71,7 +106,7 @@ async def cmd_start(message: types.Message) -> types.Message:
         "оплачивая подписку, вы соглашаетесь с правилами использования бота и условиями возврата средств, указанными в статье выше.",
         parse_mode=types.ParseMode.HTML,
     )
-    database.insert_new_user(message)
+    database.insert_new_user(message, trial_days=0)
 
     # notify admin about new user
     for admin in configuration.admins:
@@ -170,29 +205,59 @@ async def cmd_menu(message: types.Message):
 
 @rate_limit(limit=5)
 async def create_new_config(message: types.Message, state=FSMContext):
+    # Check if user has reached max configs (10)
+    config_count = database.selector.get_user_config_count(message.from_user.id)
+    max_configs = 10
+    
+    if config_count >= max_configs:
+        await message.answer(
+            f"⚠️ Вы достигли максимального количества конфигов ({max_configs}).\n\n"
+            f"Удалите старые конфиги или обратитесь к администратору для увеличения лимита.",
+            reply_markup=await kb.configs_kb(message.from_user.id),
+        )
+        return
+    
+    # Calculate days per config after creating new one
+    new_config_count = config_count + 1
+    days_per_config = 30 // new_config_count
+    
     await message.answer(
-        "Для какого устройства ты хочешь создать конфиг?",
-        reply_markup=await kb.device_kb(message.from_user.id),
+        f"⚠️ Внимание! Дни подписки распределяются между всеми конфигами.\n\n"
+        f"У вас сейчас {config_count} конфиг(ов).\n"
+        f"После создания нового конфига (всего будет {new_config_count}):\n"
+        f"• Каждый конфиг получит по {days_per_config} дней\n"
+        f"• Общий срок подписки останется 30 дней\n\n"
+        f"Максимум можно создать {max_configs} конфигов (по 3 дня каждый).\n\n"
+        f"Продолжить создание конфига?",
+        reply_markup=await kb.confirm_new_config_kb(),
     )
-    await NewConfig.device.set()
+    await NewConfig.waiting_confirmation.set()
 
 
 async def device_selected(call: types.CallbackQuery, state=FSMContext):
     """
-    This handler will be called when user presses `pc` or `phone` button
+    This handler will be called when user presses config button
     """
+    # Check for config limit reached callback
+    if call.data == "config_limit_reached":
+        await call.answer("⚠️ Вы достигли максимального количества конфигов (10)!", show_alert=True)
+        return
+    
     await state.update_data(device=call.data)
     # edit message text and delete keyboard from message
-    device = "💻 ПК" if call.data.startswith("pc") else "📱 Смартфон"
     await call.message.edit_text(
-        f"Ты выбрал {device}, приступаю к созданию конфига", reply_markup=None
+        f"Приступаю к созданию конфига", reply_markup=None
     )
     await state.finish()
 
     # add +1 to user config count
     database.update_user_config_count(call.from_user.id)
 
-    device = "PC" if call.data.startswith("pc") else "PHONE"
+    # Get next config number for this user
+    config_count = database.selector.get_user_config_count(call.from_user.id)
+    config_number = config_count  # Use current count as the config number (1, 2, 3, etc.)
+    
+    device = f"CONFIG_{config_number}"
     user_config = await vpn_config.update_server_config(
         username=call.from_user.username, device=device
     )
@@ -205,7 +270,7 @@ async def device_selected(call: types.CallbackQuery, state=FSMContext):
     )
 
     io_config_file = BytesIO(user_config.encode("utf-8"))
-    filename = f"{configuration.configs_prefix}_{call.from_user.username}_{device}.conf"
+    filename = f"{call.from_user.username}_{config_number}.conf"
 
     # send config file
     await call.message.answer_document(
@@ -216,14 +281,14 @@ async def device_selected(call: types.CallbackQuery, state=FSMContext):
         reply_markup=await kb.configs_kb(call.from_user.id),
     )
 
-    if device == "PHONE":
-        config_qr_code = create_qr_code_from_peer_data(user_config)
-        await call.message.answer_photo(
-            types.InputFile(
-                config_qr_code,
-                filename=f"{configuration.configs_prefix}_{call.from_user.username}.png",
-            ),
-        )
+    # Always create QR code for all configs
+    config_qr_code = create_qr_code_from_peer_data(user_config)
+    await call.message.answer_photo(
+        types.InputFile(
+            config_qr_code,
+            filename=f"{call.from_user.username}_{config_number}.png",
+        ),
+    )
 
 
 async def cancel_config_creation(call: types.CallbackQuery, state=FSMContext):
@@ -231,52 +296,61 @@ async def cancel_config_creation(call: types.CallbackQuery, state=FSMContext):
     await call.message.edit_text("Отмена создания конфига", reply_markup=None)
 
 
+async def confirm_new_config_handler(call: types.CallbackQuery, state=FSMContext):
+    """Handler for confirming new config creation"""
+    await call.message.edit_text(
+        "Для какого устройства ты хочешь создать конфиг?",
+        reply_markup=await kb.device_kb(call.from_user.id),
+    )
+    await NewConfig.device.set()
+
+
+async def cancel_new_config_handler(call: types.CallbackQuery, state=FSMContext):
+    """Handler for canceling new config creation"""
+    await state.finish()
+    await call.message.edit_text("Создание конфига отменено", reply_markup=None)
+
+
 @rate_limit(limit=5)
 async def cmd_show_config(message: types.Message, state=FSMContext):
-    if message.text.lower().endswith("пк"):
-        device = "PC"
-    elif message.text.lower().endswith("смартфон"):
-        device = "PHONE"
-
+    # Extract config number from message text (e.g., "CONFIG_1" -> 1)
+    try:
+        # Message text format: "CONFIG_1", "CONFIG_2", etc.
+        config_number = int(message.text.split("_")[1])
+    except (IndexError, ValueError):
+        await message.answer("❌ Неверный формат конфига")
+        return
+    
+    config_name = f"CONFIG_{config_number}"
+    
     config = database.selector.get_user_config(
         user_id=message.from_user.id,
-        config_name=f"{message.from_user.username}_{device}",
+        config_name=config_name,
     )
-    filename = (
-        f"{configuration.configs_prefix}_{message.from_user.username}_{device}.conf"
-    )
+    
+    if not config:
+        await message.answer("❌ Конфиг не найден")
+        return
+    
+    filename = f"{message.from_user.username}_{config_number}.conf"
     io_config_file = BytesIO(config.encode("utf-8"))
 
-    if device == "PC":
-        # send config file
-        await message.answer_document(
-            types.InputFile(
-                io_config_file,
-                filename=filename,
-            ),
-        )
+    # send config file
+    await message.answer_document(
+        types.InputFile(
+            io_config_file,
+            filename=filename,
+        ),
+    )
 
-    if device == "PHONE":
-        # firstly create qr code image, then send it with config file
-        # this method is used for restrict delay between sending file and photo
-        image_filename = (
-            f"{configuration.configs_prefix}_{message.from_user.username}.png"
-        )
-        config_qr_code = create_qr_code_from_peer_data(config)
-
-        await message.answer_document(
-            types.InputFile(
-                io_config_file,
-                filename=filename,
-            ),
-        )
-
-        await message.answer_photo(
-            types.InputFile(
-                config_qr_code,
-                filename=image_filename,
-            ),
-        )
+    # Always create QR code for all configs
+    config_qr_code = create_qr_code_from_peer_data(config)
+    await message.answer_photo(
+        types.InputFile(
+            config_qr_code,
+            filename=f"{message.from_user.username}_{config_number}.png",
+        ),
+    )
 
 
 @rate_limit(limit=5)

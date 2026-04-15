@@ -4,6 +4,24 @@ from data import configuration
 from datetime import datetime, timedelta
 
 
+def is_trial_used(user_id: int) -> bool:
+    """Check if user has already used trial period"""
+    try:
+        conn = pg.connect(**configuration.db_connection_parameters)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """--sql
+                SELECT trial_used FROM users WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            result = cursor.fetchone()
+            return result[0] if result else False
+    except (Exception, pg.DatabaseError) as error:
+        logger.error(f"[-] {error}")
+        return False
+
+
 def is_exist_user(user_id: int) -> bool:
     """Check if user is exist in database"""
     try:
@@ -54,6 +72,24 @@ def all_user_configs(user_id: int) -> list[str] | bool:
     except (Exception, pg.DatabaseError) as error:
         logger.error(f"[-] {error}")
         return False
+
+
+def get_user_config_count(user_id: int) -> int:
+    """Get user config count"""
+    try:
+        conn = pg.connect(**configuration.db_connection_parameters)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """--sql
+                SELECT config_count FROM users WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            result = cursor.fetchone()
+            return result[0] if result else 0
+    except (Exception, pg.DatabaseError) as error:
+        logger.error(f"[-] {error}")
+        return 0
 
 
 def is_subscription_end(user_id: int) -> bool:

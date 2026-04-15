@@ -7,6 +7,7 @@ from data import configuration
 def create_table_user() -> None:
     """Create table user in database wireguard_bot
     Default value for subscription_end_date is 999 days ago
+    trial_used - флаг использования триального периода
     """
     try:
         conn = pg.connect(**configuration.db_connection_parameters)
@@ -20,7 +21,8 @@ def create_table_user() -> None:
                 is_admin BOOLEAN DEFAULT FALSE,
                 is_banned BOOLEAN DEFAULT FALSE,
                 subscription_end_date TIMESTAMP DEFAULT now() - interval '999 days',
-                config_count INT DEFAULT 0);
+                config_count INT DEFAULT 0,
+                trial_used BOOLEAN DEFAULT FALSE);
                 """
             )
             conn.commit()

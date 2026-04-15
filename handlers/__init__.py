@@ -33,14 +33,26 @@ def setup(dp: Dispatcher):
 
     dp.register_callback_query_handler(
         device_selected,
-        lambda call: call.data.endswith("config_create_request"),
-        state=NewConfig.device,
+        lambda call: call.data == "create_config",
+        state=None,
     )
 
     dp.register_callback_query_handler(
         cancel_config_creation,
         lambda call: call.data == "cancel_config_creation",
-        state=NewConfig.device,
+        state=None,
+    )
+    
+    dp.register_callback_query_handler(
+        confirm_new_config_handler,
+        lambda call: call.data == "confirm_new_config",
+        state=NewConfig.waiting_confirmation,
+    )
+    
+    dp.register_callback_query_handler(
+        cancel_new_config_handler,
+        lambda call: call.data == "cancel_new_config",
+        state=NewConfig.waiting_confirmation,
     )
 
     dp.register_message_handler(create_new_config, text="🆕 Создать конфиг", state=None)

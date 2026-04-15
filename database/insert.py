@@ -5,19 +5,34 @@ from aiogram.types import Message
 from datetime import datetime
 
 
-def insert_new_user(message: Message) -> None:
-    """Insert new user in table users if he is not in database"""
+def insert_new_user(message: Message, trial_days: int = 0) -> None:
+    """Insert new user in table users if he is not in database
+    If trial_days > 0, set subscription_end_date to now + trial_days and mark trial_used as TRUE
+    """
     try:
         conn = pg.connect(**configuration.db_connection_parameters)
         with conn.cursor() as cursor:
-            cursor.execute(
-                """--sql
-                INSERT INTO users(user_id, username)
-                VALUES (%s, %s)
-                ON CONFLICT (user_id) DO NOTHING
-                """,
-                (message.from_user.id, message.from_user.username),
-            )
+            if trial_days > 0:
+                # New user with trial period
+                from datetime import timedelta, datetime
+                cursor.execute(
+                    """--sql
+                    INSERT INTO users(user_id, username, subscription_end_date, trial_used)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (user_id) DO NOTHING
+                    """,
+                    (message.from_user.id, message.from_user.username, datetime.now() + timedelta(days=trial_days), True),
+                )
+            else:
+                # New user without trial period
+                cursor.execute(
+                    """--sql
+                    INSERT INTO users(user_id, username)
+                    VALUES (%s, %s)
+                    ON CONFLICT (user_id) DO NOTHING
+                    """,
+                    (message.from_user.id, message.from_user.username),
+                )
             conn.commit()
             logger.success(f"[+] User {message.from_user.username} added to database")
     except (Exception, pg.DatabaseError) as error:
