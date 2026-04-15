@@ -4,6 +4,10 @@ from datetime import datetime
 
 DB_PATH = "data/users.db"
 
+async def run_migration():
+    """Асинхронная обертка для миграции"""
+    migrate()
+
 def migrate():
     if not os.path.exists(DB_PATH):
         print("База данных не найдена. Создаем новую...")

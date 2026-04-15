@@ -17,23 +17,46 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Обновление системы
-echo -e "${YELLOW}[1/8] Обновление пакетов...${NC}"
+echo -e "${YELLOW}[1/9] Обновление пакетов...${NC}"
 apt update && apt upgrade -y
 
 # Установка зависимостей
-echo -e "${YELLOW}[2/8] Установка зависимостей...${NC}"
-apt install -y git python3-pip python3-venv postgresql postgresql-contrib curl wget qrencode sudo
+echo -e "${YELLOW}[2/9] Установка зависимостей...${NC}"
+apt install -y git python3-pip python3-venv postgresql postgresql-contrib curl wget qrencode sudo \
+    build-essential libtool pkg-config autoconf automake dkms linux-headers-$(uname -r) \
+    qtbase5-dev qtchooser qt5-qmake qtbase5-dev-tools
 
-# Установка Amnezia WireGuard
-echo -e "${YELLOW}[3/8] Установка Amnezia WireGuard...${NC}"
+# Установка Amnezia WireGuard (исправленная версия)
+echo -e "${YELLOW}[3/9] Установка Amnezia WireGuard...${NC}"
 cd /tmp
+rm -rf amneziawg-tools
 git clone https://github.com/amnezia-vpn/amneziawg-tools.git
 cd amneziawg-tools
-./configure
-make
-make install
-modprobe amneziawg
-cd ..
+
+# Проверяем наличие разных методов сборки
+if [ -f "autogen.sh" ]; then
+    echo "   Используем autogen.sh..."
+    ./autogen.sh
+    ./configure
+    make
+    make install
+elif [ -f "CMakeLists.txt" ]; then
+    echo "   Используем CMake..."
+    mkdir build && cd build
+    cmake ..
+    make
+    make install
+    cd ..
+else
+    # Для версий без autogen.sh используем qmake
+    echo "   Используем qmake..."
+    qmake
+    make
+    make install
+fi
+
+modprobe amneziawg || echo "⚠️ Модуль не загрузился сразу, потребуется перезагрузка"
+cd /tmp
 rm -rf amneziawg-tools
 
 # Настройка PostgreSQL
@@ -55,7 +78,7 @@ echo "Pass: $DB_PASS"
 echo "DB:   $DB_NAME"
 
 # Подготовка директории бота
-echo -e "${YELLOW}[5/8] Копирование файлов бота...${NC}"
+echo -e "${YELLOW}[5/9] Копирование файлов бота...${NC}"
 BOT_DIR="/opt/vpnbot"
 mkdir -p $BOT_DIR
 
@@ -74,45 +97,128 @@ fi
 cd $BOT_DIR
 
 # Создание виртуального окружения
-echo -e "${YELLOW}[6/8] Настройка Python окружения...${NC}"
+echo -e "${YELLOW}[6/9] Настройка Python окружения...${NC}"
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# Генерация .env файла
-echo -e "${YELLOW}[7/8] Генерация конфигурации .env...${NC}"
+# Генерация .env файла с автоматическим определением параметров
+echo -e "${YELLOW}[7/9] Генерация конфигурации .env...${NC}"
+
+# Автоматическое определение IP сервера
+SERVER_IP=$(curl -s ifconfig.me || curl -s ipinfo.io/ip || hostname -I | awk '{print $1}')
+echo "   🌍 Обнаружен IP сервера: $SERVER_IP"
+
+# Генерация ключей WireGuard
+WG_PRIV=$(awg genkey 2>/dev/null || wg genkey)
+WG_PUB=$(echo "$WG_PRIV" | awg pubkey 2>/dev/null || echo "$WG_PRIV" | wg pubkey)
+WG_PSK=$(awg genpsk 2>/dev/null || wg genpsk)
+echo "   🔑 Ключи WireGuard сгенерированы"
+
+# Генерация пароля для БД
+DB_PASS_GEN=$(openssl rand -base64 16 | tr -dc 'a-zA-Z0-9' | head -c 20)
+echo "   🔒 Пароль БД сгенерирован"
+
+# Запрос минимальных данных у пользователя
 BOT_TOKEN=""
 ADMIN_ID=""
 GROUP_LINK=""
+PRICE="199"
+CARD=""
 
 read -p "Введите токен бота (@BotFather): " BOT_TOKEN
 read -p "Введите ваш Telegram ID (администратор): " ADMIN_ID
 read -p "Введите ссылку на обязательную группу (например, https://t.me/mychannel): " GROUP_LINK
+read -p "Цена подписки в месяц (руб, по умолчанию 199): " PRICE_INPUT
+if [ -n "$PRICE_INPUT" ]; then
+    PRICE=$PRICE_INPUT
+fi
+read -p "Номер карты для оплаты (необязательно): " CARD_INPUT
+if [ -n "$CARD_INPUT" ]; then
+    CARD=$CARD_INPUT
+fi
 
 # Сохранение .env
 cat > .env <<EOF
+# TELEGRAM SETTINGS
 BOT_TOKEN=$BOT_TOKEN
 ADMINS=$ADMIN_ID
-DATABASE_URL=postgresql+asyncpg://$DB_USER:$DB_PASS@localhost/$DB_NAME
-GROUP_LINK=$GROUP_LINK
+
+# VPN SETTINGS (Amnezia WireGuard)
+WG_SERVER_IP=$SERVER_IP
+WG_SERVER_PORT=51820
+WG_SERVER_PUBLIC_KEY=$WG_PUB
+WG_SERVER_PRESHARED_KEY=$WG_PSK
+WG_CFG_PATH=/etc/amnezia/amneziawg/wg0.conf
+CONFIGS_PREFIX=AMNEZIA_VPN
+PEER_DNS=1.1.1.1
+
+# PAYMENT SETTINGS
 PAYMENT_METHOD=manual
-CRYPTOBOT_TOKEN=
-AMNEZIA_JC=6
-AMNEZIA_JMIN=350
-AMNEZIA_JMAX=900
-AMNEZIA_S1=15
-AMNEZIA_S2=150
-AMNEZIA_H1=18446744073709551615
-AMNEZIA_H2=18446744073709551615
-AMNEZIA_H3=18446744073709551615
-AMNEZIA_H4=18446744073709551615
+PAYMENT_CARD=$CARD
+BASE_SUBSCRIPTION_MONTHLY_PRICE_RUBLES=$PRICE
+
+# GROUP SETTINGS
+GROUP_LINK=$GROUP_LINK
+
+# DATABASE SETTINGS
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=$DB_USER
+DB_USER_PASSWORD=$DB_PASS_GEN
+DATABASE=$DB_NAME
+
+# ADVANCED
+TRIAL_DAYS=1
+REFERRAL_BONUS_DAYS=10
+OBFUSCATION_JC=10
+OBFUSCATION_JMIN=5
+OBFUSCATION_JMAX=20
+OBFUSCATION_S1=30
+OBFUSCATION_S2=40
+OBFUSCATION_H1=1
+OBFUSCATION_H2=2
+OBFUSCATION_H3=3
+OBFUSCATION_H4=4
 EOF
 
 chmod 600 .env
+echo "   ✅ Файл .env создан"
+
+# Настройка конфига WireGuard сервера
+echo -e "${YELLOW}[8/9] Настройка WireGuard сервера...${NC}"
+WG_CONFIG_DIR="/etc/amnezia/amneziawg"
+mkdir -p $WG_CONFIG_DIR
+
+# Определяем сетевой интерфейс
+INTERFACE=$(ip route | grep default | awk '{print $5}' | head -n1)
+if [ -z "$INTERFACE" ]; then
+    INTERFACE="eth0"
+fi
+
+cat > $WG_CONFIG_DIR/wg0.conf <<EOF
+[Interface]
+Address = 10.0.0.1/24
+ListenPort = 51820
+PrivateKey = $WG_PRIV
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $INTERFACE -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $INTERFACE -j MASQUERADE
+SaveConfig = false
+EOF
+
+# Поднимаем интерфейс
+awg-quick up wg0 2>/dev/null || wg-quick up wg0 2>/dev/null || echo "⚠️ Интерфейс не поднят (возможно после перезагрузки)"
+systemctl enable awg-quick@wg0 2>/dev/null || systemctl enable wg-quick@wg0 2>/dev/null || true
+echo "   ✅ WireGuard настроен"
+
+# Выполнение миграции БД
+echo "   Выполнение миграции базы данных..."
+source venv/bin/activate
+python database/migrate_v2.py 2>/dev/null || echo "⚠️ Миграция не выполнена (будет при первом запуске)"
 
 # Настройка systemd сервиса
-echo -e "${YELLOW}[8/8] Создание сервиса...${NC}"
+echo -e "${YELLOW}[9/9] Создание сервиса...${NC}"
 cat > /etc/systemd/system/vpnbot.service <<EOF
 [Unit]
 Description=VPN Bot with Amnezia WireGuard
