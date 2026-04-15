@@ -195,6 +195,10 @@ class WireguardConfig:
     async def disconnect_peer(self, user_id: int):
         """Disconnects peer by user ID."""
         username = database.selector.get_username_by_id(user_id)
+        if not username:
+            logger.error(f"[-] Could not find username for user_id {user_id}")
+            return
+        
         await self.comment_lines_under_username(username)
 
         # Restart wg-quick.
@@ -202,11 +206,12 @@ class WireguardConfig:
         logger.info(f"[+] Peer {username} disconnected")
 
     async def comment_lines_under_username(self, username: str):
-        """Comments the 3 lines under the given username."""
+        """Comments all config lines under the given username (CONFIG_1, CONFIG_2, etc.)."""
         async with aiofiles.open(self.cfg_path, "r+") as cfg:
             config = await cfg.readlines()
             for line_index, line in enumerate(config):
-                if line.strip() in (f"#{username}_PC", f"#{username}_PHONE"):
+                # Check for any CONFIG_N pattern (e.g., #username_CONFIG_1, #username_CONFIG_2)
+                if line.strip().startswith(f"#{username}_CONFIG_"):
                     disconnected_username = f"DISCONNECTED_{line[1:]}"
                     config[line_index] = f"#{disconnected_username}"
                     for line_under_username_index in range(
@@ -229,7 +234,9 @@ class WireguardConfig:
             async with aiofiles.open(self.cfg_path, "r") as cfg:
                 config = await cfg.read()
                 for line in config.splitlines():
-                    if line.startswith(f"#DISCONNECTED_{username}"):
+                    # Check for DISCONNECTED_ pattern with CONFIG_N (e.g., #DISCONNECTED_username_CONFIG_1)
+                    if line.startswith(f"#DISCONNECTED_{username}_CONFIG_"):
+                        # Remove the DISCONNECTED_ prefix (14 characters)
                         config = config.replace(f"{line}\n", f"#{line[14:]}\n")
 
             async with aiofiles.open(self.cfg_path, "w") as cfg:
@@ -239,7 +246,7 @@ class WireguardConfig:
                 config = await cfg.read()
                 config_as_list = config.splitlines()
                 for line in config_as_list:
-                    if line.startswith(f"#{username}"):
+                    if line.startswith(f"#{username}_CONFIG_"):
                         # get index of line with username
                         line_index = config.splitlines().index(line)
                         if config_as_list[line_index + 1].startswith("#[Peer]"):

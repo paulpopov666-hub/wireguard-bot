@@ -189,18 +189,46 @@ Database: postgresql<br/>
 
 ### Admin commands (available in chat with bot)
 
-1. `/give <user_id> <days>` - give user access to VPN for \<days> days.<br/>
-   Also you can use this command with \<@username> instead of \<user_id>.<br/>
-   If you want to disable user's access, just use `/give <user_id> -9999` or any negative number that will be higher than user's access expiration date.<br/>
-   <b>WARNING:</b> disconnecting user will not remove his access from database, so you can give him access again later.<br/>
-   Example: `/give 123456789 30` - give user with id 123456789 access to VPN for 30 days.
-2. `/stats` - show stats about users and their access expiration dates.<br/>
-   Aviable options: `/stats active` - show active users.<br/>
-   `/stats inactive` - show inactive users.<br/>
-   `/stats` without options will show all users.<br/>
-   `/wgrestart` - restart wireguard service
+1. `/admin` - открыть панель администратора с кнопками управления.<br/>
+   Через панель можно:<br/>
+   - Посмотреть общую статистику пользователей<br/>
+   - Посмотреть статистику по датам окончания подписок<br/>
+   - Продлить подписку пользователю<br/>
+   - Перезапустить сервис WireGuard<br/>
+   
+2. `/give <user_id> <days>` - дать пользователю доступ к VPN на \<days> дней.<br/>
+   Также можно использовать \\<@username> вместо \\<user_id>.<br/>
+   Если хотите отключить пользователя, используйте `/give <user_id> -9999` или любое отрицательное число.<br/>
+   <b>WARNING:</b> отключение пользователя не удаляет его из базы данных, поэтому вы можете снова дать ему доступ позже.<br/>
+   Пример: `/give 123456789 30` - дать пользователю с id 123456789 доступ к VPN на 30 дней.
+3. `/stats` - показать статистику пользователей и даты истечения их доступа.<br/>
+   Доступные опции: `/stats active` - показать активных пользователей.<br/>
+   `/stats inactive` - показать неактивных пользователей.<br/>
+   `/stats` без опций покажет всех пользователей.<br/>
+4. `/wgrestart` - перезапустить сервис WireGuard
 
+### User buttons
 
+- `💵 Оплатить` - начать процесс оплаты подписки
+- `📁 Мои конфиги` - просмотреть свои конфигурации VPN
+- `🕑 Моя подписка` - управление подпиской
+- `📝 Помощь` - получить справку
+- `✅ Проверить подписку` - проверить подписку на канал (если настроено)
+- `♻️ Обновить статус` - обновить информацию о подписке
+- `📅 Дата отключения` - узнать дату окончания подписки
+- `💵 Продлить` - продлить подписку
+- `🆕 Создать конфиг` - создать новую конфигурацию VPN
+- `🔐 ПК` / `🔐 Смартфон` - просмотр конфигурации для конкретного устройства
+- `🔙 Назад` - вернуться в главное меню
+
+### Admin buttons
+
+- `👥 Статистика пользователей` - общая статистика по пользователям
+- `⏰ Статистика по датам` - статистика по датам окончания подписок
+- `➕ Продлить подписку` - инструкция по продлению подписки
+- `♻️ Перезапустить WireGuard` - перезапуск сервиса WireGuard
+- `Все` / `Активные` / `Истекшие` - фильтры для статистики
+- `🔙 В главное меню` - вернуться в главное меню администратора
 
 ## Star History
 

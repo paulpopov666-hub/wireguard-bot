@@ -4,6 +4,24 @@ from data import configuration
 from datetime import datetime, timedelta
 
 
+def is_trial_used(user_id: int) -> bool:
+    """Check if user has already used trial period"""
+    try:
+        conn = pg.connect(**configuration.db_connection_parameters)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """--sql
+                SELECT trial_used FROM users WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            result = cursor.fetchone()
+            return result[0] if result else False
+    except (Exception, pg.DatabaseError) as error:
+        logger.error(f"[-] {error}")
+        return False
+
+
 def is_exist_user(user_id: int) -> bool:
     """Check if user is exist in database"""
     try:
@@ -54,6 +72,24 @@ def all_user_configs(user_id: int) -> list[str] | bool:
     except (Exception, pg.DatabaseError) as error:
         logger.error(f"[-] {error}")
         return False
+
+
+def get_user_config_count(user_id: int) -> int:
+    """Get user config count"""
+    try:
+        conn = pg.connect(**configuration.db_connection_parameters)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """--sql
+                SELECT config_count FROM users WHERE user_id = %s
+                """,
+                (user_id,),
+            )
+            result = cursor.fetchone()
+            return result[0] if result else 0
+    except (Exception, pg.DatabaseError) as error:
+        logger.error(f"[-] {error}")
+        return 0
 
 
 def is_subscription_end(user_id: int) -> bool:
@@ -178,23 +214,37 @@ def get_user_ids_enddate_n_days(days: int) -> list[int] | bool:
     """Get user ids where subscription ends in N days
     don't watch at hours, minutes, seconds, milliseconds
     """
-    match days:
-        case 0:
-            shift = timedelta(days=1)
-        case -1:
-            shift = timedelta(days=2)
-        case _:
-            shift = timedelta(days=0)
-
     try:
         conn = pg.connect(**configuration.db_connection_parameters)
         with conn.cursor() as cursor:
-            cursor.execute(
-                """--sql
-                SELECT user_id FROM users WHERE subscription_end_date BETWEEN %s AND %s
-                """,
-                (datetime.now() - shift, datetime.now() + timedelta(days=days)),
-            )
+            if days == 2:
+                # Subscription ends in exactly 2 days (between now+2days and now+3days)
+                cursor.execute(
+                    """--sql
+                    SELECT user_id FROM users WHERE subscription_end_date BETWEEN %s AND %s
+                    """,
+                    (datetime.now() + timedelta(days=2), datetime.now() + timedelta(days=3)),
+                )
+            elif days == 1:
+                # Subscription ends in exactly 1 day (between now+1day and now+2days)
+                cursor.execute(
+                    """--sql
+                    SELECT user_id FROM users WHERE subscription_end_date BETWEEN %s AND %s
+                    """,
+                    (datetime.now() + timedelta(days=1), datetime.now() + timedelta(days=2)),
+                )
+            elif days == 0:
+                # Subscription ends today (between now and now+1day)
+                cursor.execute(
+                    """--sql
+                    SELECT user_id FROM users WHERE subscription_end_date BETWEEN %s AND %s
+                    """,
+                    (datetime.now(), datetime.now() + timedelta(days=1)),
+                )
+            else:
+                # For any other value, return empty list
+                return []
+            
             return [item[0] for item in cursor.fetchall()]
     except (Exception, pg.DatabaseError) as error:
         logger.error(f"[-] {error}")
@@ -231,6 +281,23 @@ def is_subscription_expired(user_id: int) -> bool:
             )
             date = cursor.fetchone()[0]
             return date < datetime.now()
+    except (Exception, pg.DatabaseError) as error:
+        logger.error(f"[-] {error}")
+        return False
+
+
+def get_all_expired_user_ids() -> list[int] | bool:
+    """Get all user ids whose subscription has expired (end_date < now)"""
+    try:
+        conn = pg.connect(**configuration.db_connection_parameters)
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """--sql
+                SELECT user_id FROM users WHERE subscription_end_date < %s
+                """,
+                (datetime.now(),),
+            )
+            return [item[0] for item in cursor.fetchall()]
     except (Exception, pg.DatabaseError) as error:
         logger.error(f"[-] {error}")
         return False

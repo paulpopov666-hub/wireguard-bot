@@ -28,17 +28,31 @@ def setup(dp: Dispatcher):
     dp.register_message_handler(cmd_my_configs, text="📁 Мои конфиги", state=None)
 
     dp.register_message_handler(cmd_menu, text="🔙 Назад", state=None)
+    
+    dp.register_message_handler(cmd_menu_admin, text="🔙 В главное меню", state=None)
 
     dp.register_callback_query_handler(
         device_selected,
-        lambda call: call.data.endswith("config_create_request"),
-        state=NewConfig.device,
+        lambda call: call.data == "create_config",
+        state=None,
     )
 
     dp.register_callback_query_handler(
         cancel_config_creation,
         lambda call: call.data == "cancel_config_creation",
-        state=NewConfig.device,
+        state=None,
+    )
+    
+    dp.register_callback_query_handler(
+        confirm_new_config_handler,
+        lambda call: call.data == "confirm_new_config",
+        state=NewConfig.waiting_confirmation,
+    )
+    
+    dp.register_callback_query_handler(
+        cancel_new_config_handler,
+        lambda call: call.data == "cancel_new_config",
+        state=NewConfig.waiting_confirmation,
     )
 
     dp.register_message_handler(create_new_config, text="🆕 Создать конфиг", state=None)
@@ -63,8 +77,15 @@ def setup(dp: Dispatcher):
     )
 
     dp.register_message_handler(
-        cmd_reboot_wg_service,
-        text="☢️Перезагрузить VPN",
+        cmd_check_channel_subscription,
+        text="✅ Проверить подписку",
+        state=None
+    )
+    
+    dp.register_message_handler(
+        cmd_refresh_status,
+        text="♻️ Обновить статус",
+        state=None
     )
 
     dp.register_message_handler(
@@ -79,7 +100,55 @@ def setup(dp: Dispatcher):
         state=NewPayment.payment_image,
     )
 
-    """moder handlers"""
+    """admin handlers"""
+    # Admin menu command
+    dp.register_message_handler(cmd_admin_menu, commands=["admin"], state=None)
+    
+    # Admin button handlers
+    dp.register_message_handler(
+        cmd_admin_stats_users, 
+        text="👥 Статистика пользователей", 
+        state=None
+    )
+    
+    dp.register_message_handler(
+        cmd_admin_stats_dates, 
+        text="⏰ Статистика по датам", 
+        state=None
+    )
+    
+    dp.register_message_handler(
+        cmd_admin_give_subscription, 
+        text="➕ Продлить подписку", 
+        state=None
+    )
+    
+    dp.register_message_handler(
+        cmd_admin_restart_wg, 
+        text="♻️ Перезапустить WireGuard", 
+        state=None
+    )
+    
+    # Stats filter handlers
+    dp.register_message_handler(
+        cmd_admin_stats_all,
+        text="Все",
+        state=None
+    )
+    
+    dp.register_message_handler(
+        cmd_admin_stats_active,
+        text="Активные",
+        state=None
+    )
+    
+    dp.register_message_handler(
+        cmd_admin_stats_expired,
+        text="Истекшие",
+        state=None
+    )
+
+    # Legacy command handlers (for backward compatibility)
     dp.register_message_handler(cmd_info, commands=["info"], state=None)
 
     dp.register_message_handler(statistic_endtime, commands=["stats"], state=None)
