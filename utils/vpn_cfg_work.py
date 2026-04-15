@@ -1,16 +1,16 @@
+from data import configuration
 from loguru import logger
 from os import getenv
 import database
 import subprocess
 from ipaddress import IPv4Address
-from data import configuration
 import aiofiles
 
 
 class WireguardConfig:
     # TODO: move it to config.py or extra module with server_cfg and client_cfg classes
     def __init__(self):
-        self.cfg_path = getenv("WG_CFG_PATH")
+        self.cfg_path = configuration.amnezia_settings.get('cfg_path', getenv("WG_CFG_PATH", "/etc/amnezia/amneziawg/wg0.conf"))
         self.server_ip = getenv("WG_SERVER_IP")
         self.server_port = getenv("WG_SERVER_PORT")
         self.server_public_key = getenv("WG_SERVER_PUBLIC_KEY")
@@ -159,7 +159,7 @@ class WireguardConfig:
         return ""
 
     async def create_peer_config(self, peer_private_key: str, peer_address: str = None) -> str:
-        """creates config for client and returns it as string with AmneziaWG obfuscation parameters"""
+        """creates config for client and returns it as string with AmneziaWG 2.0 obfuscation parameters"""
         if peer_address is None:
             peer_address = await self.get_last_peer_adress()
         
@@ -167,27 +167,33 @@ class WireguardConfig:
         obf = configuration.obfuscation_params
         
         cfg = (
+            f"# AmneziaWG 2.0\n"
             f"[Interface]\n"
             f"PrivateKey = {peer_private_key}\n"
-            f"Address = {peer_address}\n"
+            f"Address = {peer_address}/32\n"
             f"DNS = {configuration.peer_dns}\n\n"
+            f"H1 = {obf['h1']}\n"
+            f"H2 = {obf['h2']}\n"
+            f"H3 = {obf['h3']}\n"
+            f"H4 = {obf['h4']}\n"
+            f"S1 = {obf['s1']}\n"
+            f"S2 = {obf['s2']}\n"
+            f"S3 = {obf['s3']}\n"
+            f"S4 = {obf['s4']}\n"
+            f"Jc = {obf['jc']}\n"
+            f"Jmin = {obf['jmin']}\n"
+            f"Jmax = {obf['jmax']}\n"
+            f"I1 = {obf['i1']}\n"
+            f"I2 = {obf['i2']}\n"
+            f"I3 = {obf['i3']}\n"
+            f"I4 = {obf['i4']}\n"
+            f"I5 = {obf['i5']}\n\n"
             f"[Peer]\n"
             f"PublicKey = {self.server_public_key}\n"
             f"PresharedKey = {self.server_preshared_key}\n"
             f"AllowedIPs = 0.0.0.0/0\n"
             f"Endpoint = {self.server_ip}:{self.server_port}\n"
             f"PersistentKeepalive = 20\n"
-            f"\n"
-            f"# AmneziaWG obfuscation settings\n"
-            f"Jc = {obf['jc']}\n"
-            f"Jmin = {obf['jmin']}\n"
-            f"Jmax = {obf['jmax']}\n"
-            f"S1 = {obf['s1']}\n"
-            f"S2 = {obf['s2']}\n"
-            f"H1 = {obf['h1']}\n"
-            f"H2 = {obf['h2']}\n"
-            f"H3 = {obf['h3']}\n"
-            f"H4 = {obf['h4']}\n"
         )
         return cfg
 

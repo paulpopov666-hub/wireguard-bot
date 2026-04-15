@@ -129,10 +129,8 @@ BOT_TOKEN=YOUR_BOT_TOKEN_HERE
 ADMINS=YOUR_TELEGRAM_ID_HERE
 
 # Payment Configuration
-# Choose payment method: 'manual' (screenshots) or 'cryptobot'
 PAYMENT_METHOD=manual
 PAYMENT_CARD=2200000000000000
-CRYPTOBOT_TOKEN=
 
 # Pricing
 BASE_SUBSCRIPTION_MONTHLY_PRICE_RUBLES=299
@@ -227,7 +225,6 @@ echo "   Replace these values:"
 echo "   - BOT_TOKEN: Get from @BotFather in Telegram"
 echo "   - ADMINS: Your Telegram user ID (get from @userinfobot)"
 echo "   - REQUIRED_GROUP_ID: Your Telegram group ID (optional)"
-echo "   - CRYPTOBOT_TOKEN: If using CryptoBot payments (optional)"
 echo ""
 echo "2. Start the bot:"
 echo "   systemctl start vpnbot"

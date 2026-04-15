@@ -1,10 +1,8 @@
 """
-Extended admin handlers with new features:
-- Obfuscation settings management
+Simple admin handlers for Amnezia WireGuard VPN Bot
 - Statistics dashboard
-- Broadcast system with segmentation
+- Broadcast system
 - Support ticket system
-- Maintenance mode
 """
 from aiogram import types, Dispatcher
 from aiogram.fsm.context import FSMContext
@@ -13,68 +11,14 @@ from loguru import logger
 import database
 from loader import bot, vpn_config
 from data import configuration
-from utils.fsm import AdminObfuscation, AdminBroadcast, AdminSupportReply
+from utils.fsm import AdminBroadcast
 from keyboards.inline import (
-    admin_obfuscation_kb, 
     admin_stats_kb, 
     admin_broadcast_kb,
     support_ticket_kb
 )
 import asyncio
 from datetime import datetime, timedelta
-
-
-async def cmd_set_obfuscation(message: types.Message):
-    """Admin command to configure obfuscation parameters"""
-    if message.from_user.id not in configuration.admins:
-        return
-    
-    await message.answer(
-        f"{hbold('⚙️ Настройка параметров обфускации AmneziaWG')}\n\n"
-        f"Текущие параметры:\n"
-        f"Jc: {configuration.obfuscation_params['jc']}\n"
-        f"Jmin: {configuration.obfuscation_params['jmin']}\n"
-        f"Jmax: {configuration.obfuscation_params['jmax']}\n"
-        f"S1: {configuration.obfuscation_params['s1']}\n"
-        f"S2: {configuration.obfuscation_params['s2']}\n"
-        f"H1-H4: {configuration.obfuscation_params['h1']}-{configuration.obfuscation_params['h4']}\n\n"
-        f"Выберите параметр для изменения:",
-        reply_markup=await admin_obfuscation_kb()
-    )
-
-
-async def select_obfuscation_param(call: types.CallbackQuery):
-    """Handle obfuscation parameter selection"""
-    param = call.data.split('_')[2]  # get param name from callback
-    await AdminObfuscation.set_param.set()
-    await call.message.edit_text(
-        f"Введите новое значение для параметра {hcode(param)}:\n"
-        f"Текущее: {configuration.obfuscation_params.get(param, 'N/A')}"
-    )
-
-
-async def update_obfuscation_param(message: types.Message, state: FSMContext):
-    """Update obfuscation parameter and regenerate configs"""
-    try:
-        new_value = int(message.text)
-        async with state.proxy() as data:
-            param = data.get('param', 'jc')
-        
-        # Update in .env file (would need implementation)
-        # For now, just notify admin
-        await message.answer(
-            f"✅ Параметр {hcode(param)} обновлен на {new_value}\n\n"
-            f"⚠️ Внимание: Для применения изменений необходимо перезапустить сервер.\n"
-            f"Новые конфиги будут генерироваться с новыми параметрами.\n\n"
-            f"Перезапустить сервис WireGuard?",
-            reply_markup=types.ReplyKeyboardMarkup(resize_keyboard=True).add(
-                types.KeyboardButton("✅ Да, перезапустить"),
-                types.KeyboardButton("❌ Отмена")
-            )
-        )
-        await state.finish()
-    except ValueError:
-        await message.answer("❌ Введите числовое значение")
 
 
 async def cmd_stats(message: types.Message):
@@ -227,42 +171,8 @@ async def handle_support_request(message: types.Message):
         )
 
 
-async def cmd_maintenance_mode(message: types.Message):
-    """Toggle maintenance mode"""
-    if message.from_user.id not in configuration.admins:
-        return
-    
-    # Toggle maintenance mode in config/database
-    current_mode = database.selector.is_maintenance_mode()
-    new_mode = not current_mode
-    
-    database.update.set_maintenance_mode(new_mode)
-    
-    status = "🔧 включен" if new_mode else "✅ отключен"
-    await message.answer(f"Режим технических работ {status}")
-    
-    if new_mode:
-        # Notify all active users
-        users = database.selector.get_active_user_ids()
-        for user_id in users:
-            try:
-                await bot.send_message(
-                    user_id,
-                    "🔧 Технические работы\n\n"
-                    "Мы проводим плановое обновление серверов.\n"
-                    "Ваш VPN продолжит работать, но создание новых конфигов временно недоступно.\n"
-                    "Приносим извинения за неудобства!"
-                )
-            except:
-                pass
-
-
 def setup(dp: Dispatcher):
     """Register handlers"""
-    # Obfuscation management
-    dp.register_message_handler(cmd_set_obfuscation, commands=['set_obfuscation'])
-    dp.register_callback_query_handler(select_obfuscation_param, text_startswith='obf_')
-    
     # Statistics
     dp.register_message_handler(cmd_stats, commands=['stats'])
     
@@ -274,6 +184,3 @@ def setup(dp: Dispatcher):
     # Support tickets
     dp.register_message_handler(handle_support_request, commands=['support'])
     dp.register_message_handler(cmd_support_tickets, commands=['tickets'])
-    
-    # Maintenance mode
-    dp.register_message_handler(cmd_maintenance_mode, commands=['maintenance'])

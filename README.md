@@ -1,4 +1,4 @@
-<h1 align="center">Amnezia WireGuard Bot - VPN Management with Referral System</h1>
+<h1 align="center">Amnezia WireGuard Bot - Простой VPN бот для Telegram</h1>
 <p align="center">
 <img src = "image/logo_wide.png" width = 50%>
 </p>
@@ -13,232 +13,187 @@
 [![!Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
 [![!PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![!AmneziaWG](https://img.shields.io/badge/AmneziaWG-88171A?style=for-the-badge&logo=wireguard&logoColor=white)](https://amnezia.org/)
-[![!AdGuard](https://img.shields.io/badge/AdGuard-00A6D6?style=for-the-badge&logo=adguard&logoColor=white)](https://adguard.com/)
 [![!Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://telegram.org/)
 
 </div>
 
-## Contents tree:
+## Описание
 
-1. [Description](#description)
-2. [Features](#features)
-3. [Stack](#stack)
-4. [Before you start...](#before-you-start)
-5. [Setup guide](#setup)
+Надежный и простой бот для управления Amnezia WireGuard VPN сервером. Предназначен для продажи доступа к VPN через Telegram с автоматизацией выдачи конфигов и контролем подписок.
 
-## Description
+### Ключевые функции:
 
-This bot is designed to manage Amnezia WireGuard VPN server with advanced obfuscation features to bypass censorship and blocking. It can automatically connect and disconnect users, generate QR codes for mobile clients, and also can be used as a payment system for VPN services.
+- **Amnezia WireGuard Support**: Использует протокол AmneziaWG с встроенной обфускацией для обхода блокировок
+- **Автоматическое управление подписками**: Пользователи получают уведомления за 3 дня, 2 дня, 1 день до окончания подписки
+- **Пробный период**: Новые пользователи автоматически получают 1 день бесплатного доступа
+- **Реферальная система**: Пригласите друга и получите по 10 дней бонуса при оплате им подписки
+- **Проверка подписки на группу**: Опциональная возможность требовать подписку на Telegram канал
+- **Авто-отключение**: Пользователи автоматически отключаются при истечении подписки
+- **Генерация QR-кодов**: Мобильные QR-коды для быстрой настройки VPN (совместимо с AmneziaVPN)
+- **Панель администратора**: Полный контроль над пользователями, подписками и конфигами
+- **Простая оплата**: Оплата через скриншот платежа - никаких сложных интеграций
 
-### Key Features:
+## Стек технологий
 
-- **Amnezia WireGuard Support**: Uses AmneziaWG protocol with built-in obfuscation (Junk Packet Count, Junk Size, Init Sequence Junk, etc.) for better bypassing of VPN blocks
-- **Automatic Subscription Management**: Users receive notifications 3 days, 2 days, 1 day before subscription ends, and every 3 hours after expiration
-- **Trial Period**: New users get 1 day free trial automatically
-- **Referral System**: Invite friends and both get 10 days bonus when they pay for VPN
-- **Group Membership Check**: Optional requirement to join Telegram group for using the service
-- **Auto-disconnect**: Users are automatically disconnected when subscription expires
-- **QR Code Generation**: Mobile-friendly QR codes for easy VPN setup (compatible with AmneziaVPN app)
-- **Admin Panel**: Full control over users, subscriptions, and configs
+- **Язык**: Python 3.10+
+- **Фреймворк**: aiogram 3.x
+- **База данных**: PostgreSQL
+- **VPN протокол**: Amnezia WireGuard (с обфускацией)
+- **Контейнеризация**: Docker & Docker Compose
 
-## Stack
+## Быстрый старт
 
-Core: python 3.10, aiogram 2.x<br/>
-Database: postgresql<br/>
-VPN Protocol: Amnezia WireGuard (with obfuscation)<br/>
+### Вариант 1: Автоматическая установка на один сервер (рекомендуется)
 
-## Before you start... (if don't want to use semi-automatic installation script)
+Скрипт автоматически установит Amnezia WireGuard, PostgreSQL и настроит бота на одном VPS. Вам нужно будет ввести только токен бота и данные для подключения:
 
-1. You need to manually install Amnezia WireGuard on your server. The semi-automatic script will install it for you, or you can follow the [AmneziaWG installation guide](https://github.com/amnezia-vpn/amneziawg-tools).
-2. You need to configure Amnezia WireGuard server with obfuscation parameters. Configuration guides are available in [Amnezia documentation](https://amnezia.org/).
-3. You need to create a bot using [BotFather](https://t.me/BotFather).
-4. You need to install [PostgreSQL](https://www.postgresql.org/download/).
-5. You need to have poetry installed on your system. You can find installation guide [here](https://python-poetry.org/docs/#installation).
-6. Users will need AmneziaVPN client app (available for Android and iOS) to connect to the VPN. Configs are provided as .conf files for easy import.
+```bash
+wget https://raw.githubusercontent.com/wireguard-bot/master/install.sh && chmod +x install.sh && sudo ./install.sh
+```
 
-## Setup
+**В процессе установки вам потребуется ввести:**
 
-1. You can use semi-automatic installation script or manual installation guide. If you want to use script, just run it and follow the instructions. If you want to install bot manually, follow the instructions below.
-   ### Semi-automatic installation script
-   
-   The script will automatically install Amnezia WireGuard tools and configure everything with obfuscation parameters:
-   
-   ```bash
-   wget https://raw.githubusercontent.com/wireguard-bot/master/SemiAutoInstall.sh && chmod +x SemiAutoInstall.sh && ./SemiAutoInstall.sh
-   ```
-### Manual installation guide
-2. #### Clone this repo and go to project folder<br/>
+1. **Данные Amnezia WireGuard**:
+   - Использовать этот же сервер? (да/нет) - по умолчанию "да"
+   - Пароль root для SSH доступа
+   - Имя сервиса WireGuard (по умолчанию "wireguard")
 
-   ```bash
-   git clone https://github.com/wireguard-bot.git && cd wireguard-bot
-   ```
+2. **Данные Telegram бота**:
+   - Токен бота от @BotFather
+   - Ваш Telegram ID (администратор)
+   - Ссылка на группу (опционально)
+   - Цена подписки в месяц (по умолчанию 199 руб)
+   - Номер карты для оплаты (опционально)
 
-3. #### Create your virtualenv inside project dir<br/>
+Скрипт автоматически:
+- Установит все зависимости
+- Настроит Amnezia WireGuard
+- Создаст базу данных PostgreSQL
+- Сгенерирует ключи WireGuard
+- Настроит автозапуск бота
 
-   ```bash
-   poetry shell
-   ```
+### Вариант 2: Ручная установка через Docker
 
-4. #### Download required libs<br/>
+1. Клонируйте репозиторий:
+```bash
+git clone https://github.com/wireguard-bot.git && cd wireguard-bot
+```
 
-   ```bash
-   poetry install
-   ```
+2. Создайте файл `.env` в корне проекта:
+```bash
+cp data/.env.sample .env
+nano .env
+```
 
-5. #### Create your database<br/>
+3. Заполните `.env` своими данными:
+```ini
+# TELEGRAM SETTINGS
+# Токен Telegram бота (получить у @BotFather)
+BOT_TOKEN=your_bot_token_here
 
-   ```bash
-   sudo -u postgres psql
-   ```
+# ID администраторов (можно несколько через запятую)
+ADMINS=123456789
 
-   ```sql
-   CREATE DATABASE <database_name>;
-   CREATE USER <user_name> WITH PASSWORD '<password>';
-   GRANT ALL PRIVILEGES ON DATABASE <database_name> TO <user_name>;
-   GRANT ALL ON ALL TABLES IN SCHEMA "public" TO <user_name>;
-   \q
-   ```
+# AMNEZIA WIREGUARD SETTINGS
+# Данные для подключения к серверу Amnezia (если бот и VPN на одном сервере - 127.0.0.1)
+AMNEZIA_HOST=127.0.0.1
+AMNEZIA_PORT=22
+AMNEZIA_USER=root
+AMNEZIA_PASSWORD=your_root_password
+AMNEZIA_SERVICE_NAME=wireguard
 
-6. #### Create .env file in data folder and fill it with your data. You can use following example as a template or use .env.sample file (it's the same)<br/>
+# VPN SETTINGS (Amnezia WireGuard)
+# Префикс для имен конфигов
+CONFIGS_PREFIX=myvpn
 
-   ```bash
-   cp data/.env.sample data/.env
-   nano data/.env
-   ```
+# DNS сервер (по умолчанию 8.8.8.8)
+PEER_DNS=8.8.8.8
 
-   #### .env file example
+# PAYMENT SETTINGS
+# Номер карты для оплаты
+PAYMENT_CARD=0000 0000 0000 0000
 
-   ```ini
-   #telegram bot token
-   WG_BOT_TOKEN = <str>
-   #ip of your amneziawg server
-   WG_SERVER_IP = <str>
-   #port of your amneziawg server
-   WG_SERVER_PORT = '51830'
-   #server's public key (generated with amneziawg)
-   WG_SERVER_PUBLIC_KEY = <str>
-   #server's preshared key (generated with amneziawg)
-   WG_SERVER_PRESHARED_KEY= <str>
-   #path to amneziawg config file, default /etc/wireguard/wg0.conf
-   WG_CFG_PATH = '/etc/wireguard/wg0.conf'
-   #token for telegram invoice payments, if you don't use payments, just leave it empty (NOW IT'S NOT WORKING)
-   PAYMENTS_TOKEN = <str>
-   #your telegram id, you can get it from @userinfobot or @myidbot or @RawDataBot
-   ADMINS_IDS = <str>
-   #your bank card number, if you will use payments with "handmade" method
-   PAYMENT_CARD = <str>
-   #any text you want to show in the start of every peer config file (for example in case MYVPN_user_PC.conf - "MYVPN" is prefix)
-   CONFIGS_PREFIX = <str>
-   #how much subscription costs in rubles
-   BASE_SUBSCRIPTION_MONTHLY_PRICE_RUBLES = <int>
-   #dns server for your peers, default 1.1.1.1 if you don't use AdGuard Home, else 10.0.0.1
-   PEER_DNS = '1.1.1.1'
+# Цена подписки в рублях
+BASE_SUBSCRIPTION_MONTHLY_PRICE_RUBLES=299
 
-   #name of your database
-   DATABASE = <str>
-   #database user
-   DB_USER = <str>
-   #database user's password
-   DB_USER_PASSWORD = <str>
-   #database host, default localhost
-   DB_HOST = 'localhost'
-   #database port, default 5432
-   DB_PORT = '5432'
-   
-   #optional: telegram group ID that users must join to use the bot
-   REQUIRED_GROUP_ID = <int>
-   ```
+# DATABASE SETTINGS
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=vpnuser
+DB_USER_PASSWORD=vpnpass
+DATABASE=vpnbot
 
-7. #### Configure your database tables<br/>
-   Move create script from database/create.py to project root folder and run it
+# GROUP SETTINGS (опционально)
+# ID группы, обязательной для подписки
+REQUIRED_GROUP_ID=-1001234567890
 
-   ```bash
-   mv database/create.py . && python3.10 create.py
-   ```
+# ADVANCED
+TRIAL_DAYS=1
+REFERRAL_BONUS_DAYS=10
+```
 
-   Now you can delete create.py file</br>
+4. Запустите через Docker Compose:
+```bash
+docker-compose up -d
+```
 
-   ```bash
-   rm create.py
-   ```
+5. Инициализируйте базу данных:
+```bash
+docker-compose exec vpnbot python database/create.py
+```
 
-8. #### Install AdGuard Home (optional)</br>
-   Firtly make installation script executable</br>
+## Административные команды
 
-   ```bash
-   chmod +x AdGuardInstall.sh
-   ```
+- `/give <user_id> <days>` - Продлить подписку пользователю на указанное количество дней
+- `/stats` - Показать статистику пользователей
+- `/wgrestart` - Перезагрузить сервис WireGuard
+- `/broadcast` - Создать рассылку пользователям
+- `/tickets` - Просмотреть обращения в поддержку
 
-   Then run it</br>
+## Реферальная система
 
-   ```bash
-   ./AdGuardInstall.sh
-   ```
-9.  #### Configure AddGuard Home</br>
-      Open AddGuard Home web interface on url ```<your_server_ip>:3000```</br>
-      Do the initial setup, it's very simple, just follow the instructions and create admin account</br>
-      Go to Settings -> Filters -> DNS blocklists and add some blocklists (I recommend to use add all available blocklists EXCEPT `No Google` list)</br>
+Каждый пользователь получает уникальную реферальную ссылку вида:
+`https://t.me/<bot_username>?start=<user_id>`
 
-10. #### Create .service file for your bot</br>
-      Path: `/etc/systemd/system/wireguard-bot.service` </br>
-      Code: (if you using python 3.10)</br>
-   
-      ```ini
-       [Unit]
-       Description='Service for amneziawg bot'
-       After=network.target
-   
-       [Service]
-       Type=idle
-       Restart=on-failure
-       User=root
-       ExecStart=/bin/bash -c 'cd ~/wireguard-bot/ && $(poetry env info --path)/bin/python3.10 app.py'
-   
-       [Install]
-       WantedBy=multi-user.target
-      ```
-11. Enable service and start it</br>
-      ```bash
-      systemctl enable wireguard-bot.service
-      systemctl start wireguard-bot.service
-      ```
+Когда приглашенный друг оплачивает подписку:
+- Приглашенный получает +10 дней к подписке
+- Пригласивший получает +10 дней бонуса
 
-12. Finally, you can use your bot and enjoy it ❤️
+## Клиентские приложения
 
-## Extra
+Для подключения к VPN пользователям необходимо установить клиент AmneziaVPN:
 
-### Admin commands (available in chat with bot)
+- **Android**: [Google Play](https://play.google.com/store/apps/details?id=org.amnezia.awg&hl=ru)
+- **iOS**: [App Store](https://apps.apple.com/ru/app/amneziawg/id6478942365)
 
-1. `/give <user_id> <days>` - give user access to VPN for <days> days.<br/>
-   Also you can use this command with <@username> instead of <user_id>.<br/>
-   If you want to disable user's access, just use `/give <user_id> -9999` or any negative number that will be higher than user's access expiration date.<br/>
-   <b>WARNING:</b> disconnecting user will not remove his access from database, so you can give him access again later.<br/>
-   Example: `/give 123456789 30` - give user with id 123456789 access to VPN for 30 days.
-2. `/stats` - show stats about users and their access expiration dates.<br/>
-   Aviable options: `/stats active` - show active users.<br/>
-   `/stats inactive` - show inactive users.<br/>
-   `/stats` without options will show all users.<br/>
-   `/wgrestart` - restart amneziawg service
+Конфигурационные файлы `.conf` выдаются автоматически при создании подписки. Также генерируются QR-коды для быстрой настройки на мобильных устройствах.
 
-### Referral System
+## Структура проекта
 
-The bot includes a built-in referral program with Amnezia WireGuard support:
-- Each user gets a unique referral link: `https://t.me/<bot_username>?start=<user_id>`
-- When a referred friend pays for VPN subscription, both users receive 10 bonus days
-- Bonuses are automatically added to the subscription end date
-- Admins are notified about referral bonuses being awarded
-- All generated configs include AmneziaWG obfuscation parameters for bypassing censorship
+```
+├── app.py                 # Точка входа приложения
+├── handlers/              # Обработчики команд
+│   ├── user.py           # Пользовательские команды
+│   ├── admin.py          # Административные команды
+│   └── admin_extended.py # Расширенные функции админа
+├── keyboards/             # Клавиатуры для бота
+├── database/              # Работа с базой данных
+├── utils/                 # Вспомогательные функции
+├── data/                  # Конфигурация и данные
+├── docker-compose.yml     # Docker конфигурация
+└── README.md             # Документация
+```
 
-## Client Applications
+## Поддержка
 
-Users need to install AmneziaVPN client app on their mobile device:
-- **Android**: [Google Play](https://play.google.com/store/apps/details?id=org.amnezia.awg&hl=ru) - Official AmneziaWG client
-- **iOS**: [App Store](https://apps.apple.com/ru/app/amneziawg/id6478942365) - Official AmneziaWG client
+В случае возникновения вопросов или проблем:
+- Напишите в техническую поддержку через бота (команда `/support`)
+- Свяжитесь с администратором напрямую
 
-Configs are provided as `.conf` files that can be directly imported into the app. QR codes are also generated for easy setup on mobile devices.
+## Лицензия
 
-**Important**: The bot focuses on mobile platforms (Android/iOS) for ease of use. All configs include AmneziaWG obfuscation parameters for bypassing censorship.
+MIT License
 
-## Star History
+---
 
-[![Star History Chart](https://api.star-history.com/svg?repos=wireguard-bot/wireguard-bot&type=Date)](https://star-history.com/#wireguard-bot/wireguard-bot&Date)
+**Amnezia WireGuard Bot** - надежное решение для продажи VPN доступа ❤️

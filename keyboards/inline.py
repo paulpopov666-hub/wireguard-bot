@@ -33,12 +33,8 @@ async def admin_main_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats"),
          InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
-        [InlineKeyboardButton(text="⚙️ Настройки обфускации", callback_data="admin_obfuscation"),
-         InlineKeyboardButton(text="🎫 Тикеты", callback_data="admin_tickets")],
-        [InlineKeyboardButton(text="🎁 Промокоды", callback_data="admin_promo"),
-         InlineKeyboardButton(text="🔧 Тех. работы", callback_data="admin_maintenance")],
-        [InlineKeyboardButton(text="👥 Пользователи", callback_data="admin_users"),
-         InlineKeyboardButton(text="🔙 В главное меню", callback_data="user_main_menu")]
+        [InlineKeyboardButton(text="🎫 Тикеты", callback_data="admin_tickets")],
+        [InlineKeyboardButton(text="🔙 В главное меню", callback_data="user_main_menu")]
     ])
 
 
@@ -51,22 +47,11 @@ async def admin_stats_kb():
     ])
 
 
-async def admin_obfuscation_kb():
-    """Клавиатура настройки обфускации"""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🔄 Сгенерировать новые параметры", callback_data="obf_generate_new")],
-        [InlineKeyboardButton(text="📝 Ввести вручную", callback_data="obf_enter_manual")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_main_menu")]
-    ])
-
-
 async def admin_broadcast_kb():
     """Клавиатура рассылки"""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📣 Всем пользователям", callback_data="broadcast_all"),
          InlineKeyboardButton(text="⏰ Скоро окончание", callback_data="broadcast_expiring")],
-        [InlineKeyboardButton(text="💰 Оплатившие", callback_data="broadcast_paid"),
-         InlineKeyboardButton(text="🆕 Триал пользователи", callback_data="broadcast_trial")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_main_menu")]
     ])
 
@@ -80,43 +65,22 @@ async def admin_tickets_kb(ticket_id: int):
     ])
 
 
-async def admin_promo_kb():
-    """Клавиатура промокодов"""
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="➕ Создать промокод", callback_data="promo_create"),
-         InlineKeyboardButton(text="📋 Список активных", callback_data="promo_list")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_main_menu")]
-    ])
-
-
-async def maintenance_mode_kb(is_active: bool):
-    """Клавиатура режима тех. работ"""
-    action = "Отключить" if is_active else "Включить"
-    status = "🟢 ВКЛЮЧЕНО" if is_active else "🔴 ВЫКЛЮЧЕНО"
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=f"{action} режим тех. работ ({status})", callback_data="toggle_maintenance")],
-        [InlineKeyboardButton(text="🔙 Назад", callback_data="admin_main_menu")]
-    ])
-
-
 # Пользовательские клавиатуры
 async def user_main_kb():
     """Главное меню пользователя"""
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔑 Мой VPN", callback_data="user_my_vpn"),
          InlineKeyboardButton(text="💳 Оплата", callback_data="user_payment")],
-        [InlineKeyboardButton(text="👥 Рефералы", callback_data="user_referrals"),
-         InlineKeyboardButton(text="🎁 Промокод", callback_data="user_promo")],
+        [InlineKeyboardButton(text="👥 Рефералы", callback_data="user_referrals")],
         [InlineKeyboardButton(text="🆘 Поддержка", callback_data="user_support"),
          InlineKeyboardButton(text="📲 Приложения", callback_data="user_apps")]
     ])
 
 
 async def payment_method_kb():
-    """Выбор метода оплаты"""
+    """Payment method - only manual screenshot"""
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📸 Скриншот платежа", callback_data="pay_screenshot")],
-        [InlineKeyboardButton(text="🪙 CryptoBot", callback_data="pay_cryptobot")],
+        [InlineKeyboardButton(text="📸 Отправить скриншот оплаты", callback_data="pay_screenshot")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="user_main_menu")]
     ])
 
